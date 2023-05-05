@@ -5,8 +5,9 @@
 
 import ChartboostMediationSDK
 import Foundation
+import MobileFuseSDK
 
-class PARTNERNAMEAdapterAd: NSObject {
+class MobileFuseAdapterAd: NSObject {
     /// The partner adapter that created this ad.
     let adapter: PartnerAdapter
 

@@ -5,34 +5,44 @@
 
 import ChartboostMediationSDK
 import Foundation
+import MobileFuseSDK
 import UIKit
 
-final class PARTNERNAMEAdapter: PartnerAdapter {
+// Must conform to NSObjectProtocol to be a IMFInitializationCallbackReceiver
+final class MobileFuseAdapter: PartnerAdapter {
+    // String meaning: spec v1, NO we haven't asked the user, NO they did not opt out
+    private var CCPAString = "1NN-"
+    private var initializationCompletion: ((Error?) -> Void)?
+    private var isSubjectToCoppa: Bool?
+    private var privacyPreferences: MobileFusePrivacyPreferences
+
+    // MARK: PartnerAdapter
+
     /// The version of the partner SDK.
-    // TODO: partnerSDKVersion
-    let partnerSDKVersion = ""
+    let partnerSDKVersion = "1.4.5"
 
     /// The version of the adapter.
     /// It should have either 5 or 6 digits separated by periods, where the first digit is Chartboost Mediation SDK's major version, the last digit is the adapter's build version, and intermediate digits are the partner SDK's version.
     /// Format: `<Chartboost Mediation major version>.<Partner major version>.<Partner minor version>.<Partner patch version>.<Partner build version>.<Adapter build version>` where `.<Partner build version>` is optional.
-    // TODO: adapterVersion
-    let adapterVersion = "0.0.0.0.0"
+    let adapterVersion = "4.1.4.5.0"
 
     /// The partner's unique identifier.
-    // TODO: partnerIdentifier
-    let partnerIdentifier = ""
+    let partnerIdentifier = "mobilefuse"
 
     /// The human-friendly partner name.
-    // TODO: partnerDisplayName
-    let partnerDisplayName = ""
+    let partnerDisplayName = "MobileFuse"
 
     /// The designated initializer for the adapter.
     /// Chartboost Mediation SDK will use this constructor to create instances of conforming types.
     /// - parameter storage: An object that exposes storage managed by the Chartboost Mediation SDK to the adapter.
     /// It includes a list of created `PartnerAd` instances. You may ignore this parameter if you don't need it.
     init(storage: PartnerAdapterStorage) {
-        // Perform any initialization tasks that are needed prior to setUp() here.
-        // You may keep a reference to `storage` and use it later to gather some information from previously created ads.
+        privacyPreferences = MobileFusePrivacyPreferences()
+        // TODO: make sure the SDK sends us the privacy settings prior to calling init()
+        if let coppa = isSubjectToCoppa {
+            privacyPreferences.setSubjectToCoppa(coppa)
+        }
+        MobileFuse.setPrivacyPreferences(privacyPreferences)
     }
 
     /// Does any setup needed before beginning to load ads.
@@ -40,8 +50,9 @@ final class PARTNERNAMEAdapter: PartnerAdapter {
     /// - parameter completion: Closure to be performed by the adapter when it's done setting up. It should include an error indicating the cause for failure or `nil` if the operation finished successfully.
     func setUp(with configuration: PartnerConfiguration, completion: @escaping (Error?) -> Void) {
         log(.setUpStarted)
-
-        // TODO: Init partner SDK
+        MobileFuse.initializeCoreServices()
+        // This init method doesn't trigger any callbacks, so we declare success right away
+        log(.setUpSucceded)
     }
 
     /// Fetches bidding tokens needed for the partner to participate in an auction.
@@ -49,31 +60,44 @@ final class PARTNERNAMEAdapter: PartnerAdapter {
     /// - parameter completion: Closure to be performed with the fetched info.
     func fetchBidderInformation(request: PreBidRequest, completion: @escaping ([String : String]?) -> Void) {
         log(.fetchBidderInfoStarted(request))
-        // TODO: IF this is a bidding partner, get bid token from partner SDK and return in completion.
-        // log(.fetchBidderInfoSucceeded(request))
+        let tokenRequest = MFBiddingTokenRequest()
+        tokenRequest.privacyPreferences = privacyPreferences
+        tokenRequest.isTestMode = MobileFuseAdapterConfiguration.testMode
+        if let token = MFBiddingTokenProvider.getTokenWith(tokenRequest) {
+            completion(["token": token])
+            log(.fetchBidderInfoSucceeded(request))
+        } else {
+            completion(nil)
+            let error = error(.prebidFailureUnknown)
+            log(.fetchBidderInfoFailed(request, error: error))
+        }
     }
 
     /// Indicates if GDPR applies or not and the user's GDPR consent status.
     /// - parameter applies: `true` if GDPR applies, `false` if not, `nil` if the publisher has not provided this information.
-    /// - parameter status: One of the `GDPRConsentStatus` values depending on the user's pPARTNERNAME.
+    /// - parameter status: One of the `GDPRConsentStatus` values depending on the user's pMobileFuse.
     func setGDPR(applies: Bool?, status: GDPRConsentStatus) {
-        // TODO: Set GDPR consent status
-        // log(.privacyUpdated(setting: "consentsToTracking", value: consentString))
+        // GDPR consent setting is a NO-OP as Chartboost Mediation does not support an IAB-compatible privacy consent string
     }
 
     /// Indicates the CCPA status both as a boolean and as an IAB US privacy string.
     /// - parameter hasGivenConsent: A boolean indicating if the user has given consent.
     /// - parameter privacyString: An IAB-compliant string indicating the CCPA status.
     func setCCPA(hasGivenConsent: Bool, privacyString: String) {
-        // TODO: Set CCPA consent status
-        // log(.privacyUpdated(setting: "ccpaConsent", value: consent))
+        if hasGivenConsent {
+            // String meaning: spec v1, YES user has been given a choice, NO they did not opt out
+            CCPAString = "1YN-"
+        } else {
+            // String meaning: spec v1, YES user has been given a choice, YES they opted out
+            CCPAString = "1YY-"
+        }
     }
 
     /// Indicates if the user is subject to COPPA or not.
     /// - parameter isChildDirected: `true` if the user is subject to COPPA, `false` otherwise.
     func setCOPPA(isChildDirected: Bool) {
-        // TODO: Set COPPA consent status
-        // log(.privacyUpdated(setting: "coppaExempt", value: !isChildDirected))
+        isSubjectToCoppa = isChildDirected
+        log(.privacyUpdated(setting: "subjectToCoppa", value: isChildDirected))
     }
 
     /// Creates a new ad object in charge of communicating with a single partner SDK ad instance.
@@ -86,11 +110,11 @@ final class PARTNERNAMEAdapter: PartnerAdapter {
     func makeAd(request: PartnerAdLoadRequest, delegate: PartnerAdDelegate) throws -> PartnerAd {
         switch request.format {
         case .banner:
-            // TODO: create and return banner ad object
+            return MobileFuseAdapterBannerAd(adapter: self, request: request, delegate: delegate)
         case .interstitial:
-            // TODO: Create and return interstitial ad object
+            return MobileFuseAdapterInterstitialAd(adapter: self, request: request, delegate: delegate)
         case .rewarded:
-            // TODO: Create and return rewarded ad object
+            return MobileFuseAdapterRewardedAd(adapter: self, request: request, delegate: delegate)
         default:
             throw error(.loadFailureUnsupportedAdFormat)
         }

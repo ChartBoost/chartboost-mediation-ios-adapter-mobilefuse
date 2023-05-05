@@ -4,8 +4,9 @@
 // license that can be found in the LICENSE file.
 
 import Foundation
+import MobileFuseSDK
 
-@objc public class PARTNERNAMEAdapterConfiguration: NSObject {
+@objc public class MobileFuseAdapterConfiguration: NSObject {
 
     /// Flag that can optionally be set to enable the partner's test mode.
     /// Disabled by default.
@@ -14,6 +15,4 @@ import Foundation
             // TODO: Set the test mode on the partner SDK.
         }
     }
-
-    /// Append any other properties that publishers can configure.
 }

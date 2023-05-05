@@ -7,23 +7,26 @@ import ChartboostMediationSDK
 import Foundation
 import MobileFuseSDK
 
-final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
+final class MobileFuseAdapterRewardedAd: MobileFuseAdapterAd, PartnerAd {
 
     /// The partner ad view to display inline. E.g. a banner view.
     /// Should be nil for full-screen ads.
-    var inlineView: UIView?
+    var inlineView: UIView? { nil }
+
+    /// The MobileFuseSDK ad instance.
+    var ad: MFRewardedAd?
 
     /// Loads an ad.
     /// - parameter viewController: The view controller on which the ad will be presented on. Needed on load for some banners.
     /// - parameter completion: Closure to be performed once the ad has been loaded.
     func load(with viewController: UIViewController?, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
         log(.loadStarted)
-        let adSize = getMobileFuseBannerAdSize(size: request.size)
-        if let ad = MFBannerAd.init(placementId: request.partnerPlacement, with: adSize) {
+
+        if let rewardedAd = MFRewardedAd(placementId: request.partnerPlacement) {
             loadCompletion = completion
-            ad.register(self)
-            inlineView = ad
-            ad.load(withBiddingResponseToken: request.adm)
+            ad = rewardedAd
+            rewardedAd.register(self)
+            rewardedAd.load(withBiddingResponseToken: request.adm)
         } else {
             let error = error(.loadFailureUnknown)
             log(.loadFailed(error))
@@ -36,29 +39,20 @@ final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
     /// - parameter viewController: The view controller on which the ad will be presented on.
     /// - parameter completion: Closure to be performed once the ad has been shown.
     func show(with viewController: UIViewController, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
-        // no-op
-    }
+        log(.showStarted)
 
-    /// Map Chartboost Mediation's banner sizes to the MobileFuse SDK's supported sizes.
-    /// - Parameter size: The Chartboost Mediation's banner size.
-    /// - Returns: The corresponding MobileFuse banner size.
-    func getMobileFuseBannerAdSize(size: CGSize?) -> MFBannerAdSize {
-        let height = size?.height ?? 50
-
-        switch height {
-        case 50..<89:
-            return MFBannerAdSize.MOBILEFUSE_BANNER_SIZE_320x50
-        case 90..<249:
-            return MFBannerAdSize.MOBILEFUSE_BANNER_SIZE_728x90
-        case 250...:
-            return MFBannerAdSize.MOBILEFUSE_BANNER_SIZE_300x250
-        default:
-            return MFBannerAdSize.MOBILEFUSE_BANNER_SIZE_320x50
+        guard let ad = ad, ad.isLoaded() else {
+            let error = error(.showFailureAdNotReady)
+            log(.showFailed(error))
+            completion(.failure(error))
+            return
         }
+
+        ad.show()
     }
 }
 
-extension MobileFuseAdapterBannerAd: IMFAdCallbackReceiver {
+extension MobileFuseAdapterRewardedAd: IMFAdCallbackReceiver {
     func onAdLoaded() {
         log(.loadSucceeded)
         loadCompletion?(.success([:])) ?? log(.loadResultIgnored)
@@ -96,5 +90,10 @@ extension MobileFuseAdapterBannerAd: IMFAdCallbackReceiver {
     func onAdError(_ message: String!) {
         let errorMessage = message ?? "An unidentified error occoured"
         log(.custom(errorMessage))
+    }
+
+    func onUserEarnedReward() {
+        log(.didReward)
+        delegate?.didReward(self, details: [:]) ?? log(.delegateUnavailable)
     }
 }
