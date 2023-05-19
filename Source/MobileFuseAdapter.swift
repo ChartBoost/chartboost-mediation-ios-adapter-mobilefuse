@@ -16,6 +16,16 @@ final class MobileFuseAdapter: PartnerAdapter {
     private var isSubjectToCoppa: Bool?
     private var privacyPreferences: MobileFusePrivacyPreferences
 
+    private func setPrivacyPreferences() {
+        if let coppa = isSubjectToCoppa {
+            privacyPreferences.setSubjectToCoppa(coppa)
+        }
+        // "US Privacy Strings" have the same format as CCPA strings
+        // https://github.com/InteractiveAdvertisingBureau/USPrivacy/blob/master/CCPA/US%20Privacy%20String.md
+        privacyPreferences.setUsPrivacyConsentString(CCPAString)
+        MobileFuse.setPrivacyPreferences(privacyPreferences)
+    }
+
     // MARK: PartnerAdapter
 
     /// The version of the partner SDK.
@@ -38,14 +48,6 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// It includes a list of created `PartnerAd` instances. You may ignore this parameter if you don't need it.
     init(storage: PartnerAdapterStorage) {
         privacyPreferences = MobileFusePrivacyPreferences()
-        // TODO: make sure the SDK sends us the privacy settings prior to calling init()
-        if let coppa = isSubjectToCoppa {
-            privacyPreferences.setSubjectToCoppa(coppa)
-        }
-        // "US Privacy Strings" have the same format as CCPA strings
-        // https://github.com/InteractiveAdvertisingBureau/USPrivacy/blob/master/CCPA/US%20Privacy%20String.md
-        privacyPreferences.setUsPrivacyConsentString(CCPAString)
-        MobileFuse.setPrivacyPreferences(privacyPreferences)
     }
 
     /// Does any setup needed before beginning to load ads.
@@ -88,12 +90,14 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// - parameter privacyString: An IAB-compliant string indicating the CCPA status.
     func setCCPA(hasGivenConsent: Bool, privacyString: String) {
         CCPAString = privacyString
+        setPrivacyPreferences()
     }
 
     /// Indicates if the user is subject to COPPA or not.
     /// - parameter isChildDirected: `true` if the user is subject to COPPA, `false` otherwise.
     func setCOPPA(isChildDirected: Bool) {
         isSubjectToCoppa = isChildDirected
+        setPrivacyPreferences()
         log(.privacyUpdated(setting: "subjectToCoppa", value: isChildDirected))
     }
 
