@@ -42,6 +42,9 @@ final class MobileFuseAdapter: PartnerAdapter {
         if let coppa = isSubjectToCoppa {
             privacyPreferences.setSubjectToCoppa(coppa)
         }
+        // "US Privacy Strings" have the same format as CCPA strings
+        // https://github.com/InteractiveAdvertisingBureau/USPrivacy/blob/master/CCPA/US%20Privacy%20String.md
+        privacyPreferences.setUsPrivacyConsentString(CCPAString)
         MobileFuse.setPrivacyPreferences(privacyPreferences)
     }
 
@@ -84,13 +87,7 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// - parameter hasGivenConsent: A boolean indicating if the user has given consent.
     /// - parameter privacyString: An IAB-compliant string indicating the CCPA status.
     func setCCPA(hasGivenConsent: Bool, privacyString: String) {
-        if hasGivenConsent {
-            // String meaning: spec v1, YES user has been given a choice, NO they did not opt out
-            CCPAString = "1YN-"
-        } else {
-            // String meaning: spec v1, YES user has been given a choice, YES they opted out
-            CCPAString = "1YY-"
-        }
+        CCPAString = privacyString
     }
 
     /// Indicates if the user is subject to COPPA or not.
