@@ -55,9 +55,13 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// - parameter completion: Closure to be performed by the adapter when it's done setting up. It should include an error indicating the cause for failure or `nil` if the operation finished successfully.
     func setUp(with configuration: PartnerConfiguration, completion: @escaping (Error?) -> Void) {
         log(.setUpStarted)
-        MobileFuse.initializeCoreServices()
-        // This init method doesn't trigger any callbacks, so we declare success right away
-        log(.setUpSucceded)
+        // MobileFuse's initialization needs to be done on the main thread
+        // This isn't stated in their documentation but a warning in Xcode says we're accessing [UIApplication applicationState] here
+        DispatchQueue.main.async {
+            MobileFuse.initializeCoreServices()
+            // This init method doesn't trigger any callbacks, so we declare success right away
+            self.log(.setUpSucceded)
+        }
     }
 
     /// Fetches bidding tokens needed for the partner to participate in an auction.
