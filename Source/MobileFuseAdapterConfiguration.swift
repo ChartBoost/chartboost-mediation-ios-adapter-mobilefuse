@@ -10,9 +10,5 @@ import MobileFuseSDK
 
     /// Flag that can optionally be set to enable the partner's test mode.
     /// Disabled by default.
-    @objc public static var testMode: Bool = false {
-        didSet {
-            // TODO: Set the test mode on the partner SDK.
-        }
-    }
+    @objc public static var testMode: Bool = false
 }

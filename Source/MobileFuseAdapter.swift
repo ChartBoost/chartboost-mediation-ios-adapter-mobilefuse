@@ -29,12 +29,12 @@ final class MobileFuseAdapter: PartnerAdapter {
     // MARK: PartnerAdapter
 
     /// The version of the partner SDK.
-    let partnerSDKVersion = "1.4.5"
+    let partnerSDKVersion = "1.5.0"
 
     /// The version of the adapter.
     /// It should have either 5 or 6 digits separated by periods, where the first digit is Chartboost Mediation SDK's major version, the last digit is the adapter's build version, and intermediate digits are the partner SDK's version.
     /// Format: `<Chartboost Mediation major version>.<Partner major version>.<Partner minor version>.<Partner patch version>.<Partner build version>.<Adapter build version>` where `.<Partner build version>` is optional.
-    let adapterVersion = "4.1.4.5.0"
+    let adapterVersion = "4.1.5.0.0"
 
     /// The partner's unique identifier.
     let partnerIdentifier = "mobilefuse"
@@ -61,6 +61,7 @@ final class MobileFuseAdapter: PartnerAdapter {
             MobileFuse.initializeCoreServices()
             // This init method doesn't trigger any callbacks, so we declare success right away
             self.log(.setUpSucceded)
+            completion(nil)
         }
     }
 
