@@ -22,15 +22,26 @@ final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerAd {
     func load(with viewController: UIViewController?, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
         log(.loadStarted)
 
-        if let interstitialAd = MFInterstitialAd(placementId: request.partnerPlacement) {
-            loadCompletion = completion
-            ad = interstitialAd
-            interstitialAd.register(self)
-            interstitialAd.load(withBiddingResponseToken: request.adm)
-        } else {
-            let error = error(.loadFailureUnknown)
-            log(.loadFailed(error))
-            completion(.failure(error))
+        DispatchQueue.main.async {
+            if let interstitialAd = MFInterstitialAd(placementId: self.request.partnerPlacement) {
+                self.loadCompletion = completion
+                self.ad = interstitialAd
+                interstitialAd.register(self)
+                // BEGIN KLUDGE
+                if let signaldata = self.request.partnerSettings["signaldata"] as? String {
+                    interstitialAd.load(withBiddingResponseToken: signaldata)
+                } else {
+                    let error = self.error(.loadFailureUnknown)
+                    self.log(.loadFailed(error))
+                    completion(.failure(error))
+                }
+                // END KLUDGE
+//                interstitialAd.load(withBiddingResponseToken: self.request.adm)
+            } else {
+                let error = self.error(.loadFailureUnknown)
+                self.log(.loadFailed(error))
+                completion(.failure(error))
+            }
         }
     }
 
@@ -47,48 +58,69 @@ final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerAd {
             completion(.failure(error))
             return
         }
+        showCompletion = completion
 
+        viewController.view.addSubview(ad)
+//        ad.updateViewFrame(viewController.view)
+//        let disposableView = UIView()
+//        disposableView.addSubview(ad)
         ad.show()
+    }
+
+    func invalidate() throws {
+//    }
+//
+//    deinit {
+        // Don't bother dispatching the task if self.ad isn't there
+        if self.ad != nil {
+            // Must be called from main thread
+            DispatchQueue.main.async {
+                if let ad = self.ad {
+                    ad.destroy()
+                }
+            }
+        }
     }
 }
 
 extension MobileFuseAdapterInterstitialAd: IMFAdCallbackReceiver {
-    func onAdLoaded() {
+    @objc
+    func onAdLoaded(_ ad: MFAd!) {
         log(.loadSucceeded)
         loadCompletion?(.success([:])) ?? log(.loadResultIgnored)
         loadCompletion = nil
     }
 
-    func onAdNotFilled() {
+    func onAdNotFilled(_ ad: MFAd!) {
         let error = error(.loadFailureNoFill)
         log(.loadFailed(error))
         loadCompletion?(.failure(error)) ?? log(.loadResultIgnored)
         loadCompletion = nil
     }
 
-    func onAdClosed() {
+    func onAdClosed(_ ad: MFAd!) {
         log(.didDismiss(error: nil))
         delegate?.didDismiss(self, details: [:], error: nil) ?? log(.delegateUnavailable)
     }
 
-    func onAdRendered() {
+    func onAdRendered(_ ad: MFAd!) {
         log(.showSucceeded)
         showCompletion?(.success([:])) ?? log(.showResultIgnored)
         showCompletion = nil
     }
 
-    func onAdClicked() {
+    func onAdClicked(_ ad: MFAd!) {
         log(.didClick(error: nil))
         delegate?.didClick(self, details: [:]) ?? log(.delegateUnavailable)
     }
 
-    func onAdExpired() {
+    func onAdExpired(_ ad: MFAd!) {
         log(.didExpire)
         delegate?.didExpire(self, details: [:]) ?? log(.delegateUnavailable)
     }
 
-    func onAdError(_ message: String!) {
-        let errorMessage = message ?? "An unidentified error occoured"
+    func onAdError(_ ad: MFAd!, withError error: MFAdError!) {
+        let errorMessage = error.localizedDescription
         log(.custom(errorMessage))
     }
 }

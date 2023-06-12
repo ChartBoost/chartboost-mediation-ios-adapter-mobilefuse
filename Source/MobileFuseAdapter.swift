@@ -29,12 +29,12 @@ final class MobileFuseAdapter: PartnerAdapter {
     // MARK: PartnerAdapter
 
     /// The version of the partner SDK.
-    let partnerSDKVersion = "1.5.0"
+    let partnerSDKVersion = MobileFuse.version() ?? ""
 
     /// The version of the adapter.
     /// It should have either 5 or 6 digits separated by periods, where the first digit is Chartboost Mediation SDK's major version, the last digit is the adapter's build version, and intermediate digits are the partner SDK's version.
     /// Format: `<Chartboost Mediation major version>.<Partner major version>.<Partner minor version>.<Partner patch version>.<Partner build version>.<Adapter build version>` where `.<Partner build version>` is optional.
-    let adapterVersion = "4.1.5.0.0"
+    let adapterVersion = "4.1.4.4.0"
 
     /// The partner's unique identifier.
     let partnerIdentifier = "mobilefuse"
@@ -74,7 +74,10 @@ final class MobileFuseAdapter: PartnerAdapter {
         tokenRequest.privacyPreferences = privacyPreferences
         tokenRequest.isTestMode = MobileFuseAdapterConfiguration.testMode
         if let token = MFBiddingTokenProvider.getTokenWith(tokenRequest) {
-            completion(["token": token])
+            completion(["signal": token])
+            // Example string from their docs that Colton suggested
+//            completion(["signal": "H4sIAAAAAAAAAGWOTQrCMBBG7zLrsVhDVXoHTyBdpE0qgfyRxFAJubuTulJXA+/NfN8UUMbDeC8gVPSavwy3/CEDjGDWDfAHRxnyLvuOdcdDWAZambm1DRbgXlEWwwHPeJkqQlZCun+D4INLbnE6Ej0RZY3jdaqV5DN+4uSW2nBGCW+p9OZmpeVKmlp3mr9eqdSYZKSjvr4BZcS0rdkAAAA="])
+//            completion(["signal": "H4sIAAAAAAAAAGWOTQrCMBBG7zLrsVhDVXoHTyBdpE0qgfyRxFAJubuTulJXA+/NfN8UUMbDeC8gVPSavwy3/CEDjGDWDfAHRxnyLvuOdcdDWAZambm1DRbgXlEWwwHPeJkqQlZCun+D4INLbnE6Ej0RZY3jdaqV5DN+4uSW2nBGCW+p9OZmpeVKmlp3mr9eqdSYZKSjvr4BZcS0rdkAAAA="])
             log(.fetchBidderInfoSucceeded(request))
         } else {
             completion(nil)

@@ -22,15 +22,26 @@ final class MobileFuseAdapterRewardedAd: MobileFuseAdapterAd, PartnerAd {
     func load(with viewController: UIViewController?, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
         log(.loadStarted)
 
-        if let rewardedAd = MFRewardedAd(placementId: request.partnerPlacement) {
-            loadCompletion = completion
-            ad = rewardedAd
-            rewardedAd.register(self)
-            rewardedAd.load(withBiddingResponseToken: request.adm)
-        } else {
-            let error = error(.loadFailureUnknown)
-            log(.loadFailed(error))
-            completion(.failure(error))
+        DispatchQueue.main.async {
+            if let rewardedAd = MFRewardedAd(placementId: self.request.partnerPlacement) {
+                self.loadCompletion = completion
+                self.ad = rewardedAd
+                rewardedAd.register(self)
+                // BEGIN KLUDGE
+                if let signaldata = self.request.partnerSettings["signaldata"] as? String {
+                    rewardedAd.load(withBiddingResponseToken: signaldata)
+                } else {
+                    let error = self.error(.loadFailureUnknown)
+                    self.log(.loadFailed(error))
+                    completion(.failure(error))
+                }
+                // END KLUDGE
+                //            rewardedAd.load(withBiddingResponseToken: request.adm)
+            } else {
+                let error = self.error(.loadFailureUnknown)
+                self.log(.loadFailed(error))
+                completion(.failure(error))
+            }
         }
     }
 
@@ -47,7 +58,8 @@ final class MobileFuseAdapterRewardedAd: MobileFuseAdapterAd, PartnerAd {
             completion(.failure(error))
             return
         }
-
+        showCompletion = completion
+        // TODO: match additions to interstitial ad
         ad.show()
     }
 }
