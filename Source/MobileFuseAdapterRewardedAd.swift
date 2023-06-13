@@ -24,9 +24,14 @@ final class MobileFuseAdapterRewardedAd: MobileFuseAdapterAd, PartnerAd {
 
         DispatchQueue.main.async {
             if let rewardedAd = MFRewardedAd(placementId: self.request.partnerPlacement) {
-                self.loadCompletion = completion
                 self.ad = rewardedAd
+                self.loadCompletion = completion
+                // Set test mode to either true or false
+                rewardedAd.testMode = MobileFuseAdapterConfiguration.testMode
+                // Set self as the callback receiver
                 rewardedAd.register(self)
+                // The following block of code relies on a modified version of the SDK that stores the
+                // "signaldata" value we currently receive inside the "partner extras" section of the bid response
                 // BEGIN KLUDGE
                 if let signaldata = self.request.partnerSettings["signaldata"] as? String {
                     rewardedAd.load(withBiddingResponseToken: signaldata)
@@ -36,7 +41,7 @@ final class MobileFuseAdapterRewardedAd: MobileFuseAdapterAd, PartnerAd {
                     completion(.failure(error))
                 }
                 // END KLUDGE
-                //            rewardedAd.load(withBiddingResponseToken: request.adm)
+//                rewardedAd.load(withBiddingResponseToken: self.request.adm)
             } else {
                 let error = self.error(.loadFailureUnknown)
                 self.log(.loadFailed(error))
@@ -59,42 +64,55 @@ final class MobileFuseAdapterRewardedAd: MobileFuseAdapterAd, PartnerAd {
             return
         }
         showCompletion = completion
-        // TODO: match additions to interstitial ad
+
+        viewController.view.addSubview(ad)
         ad.show()
+    }
+
+    func invalidate() throws {
+        log(.invalidateStarted)
+        DispatchQueue.main.async {
+            if let ad = self.ad {
+                ad.destroy()
+                self.log(.invalidateSucceeded)
+            } else {
+                self.log(.invalidateFailed(self.error(.invalidateFailureAdNotFound)))
+            }
+        }
     }
 }
 
 extension MobileFuseAdapterRewardedAd: IMFAdCallbackReceiver {
-    func onAdLoaded() {
+    func onAdLoaded(_ ad: MFAd!) {
         log(.loadSucceeded)
         loadCompletion?(.success([:])) ?? log(.loadResultIgnored)
         loadCompletion = nil
     }
 
-    func onAdNotFilled() {
+    func onAdNotFilled(_ ad: MFAd!) {
         let error = error(.loadFailureNoFill)
         log(.loadFailed(error))
         loadCompletion?(.failure(error)) ?? log(.loadResultIgnored)
         loadCompletion = nil
     }
 
-    func onAdClosed() {
+    func onAdClosed(_ ad: MFAd!) {
         log(.didDismiss(error: nil))
         delegate?.didDismiss(self, details: [:], error: nil) ?? log(.delegateUnavailable)
     }
 
-    func onAdRendered() {
+    func onAdRendered(_ ad: MFAd!) {
         log(.showSucceeded)
         showCompletion?(.success([:])) ?? log(.showResultIgnored)
         showCompletion = nil
     }
 
-    func onAdClicked() {
+    func onAdClicked(_ ad: MFAd!) {
         log(.didClick(error: nil))
         delegate?.didClick(self, details: [:]) ?? log(.delegateUnavailable)
     }
 
-    func onAdExpired() {
+    func onAdExpired(_ ad: MFAd!) {
         log(.didExpire)
         delegate?.didExpire(self, details: [:]) ?? log(.delegateUnavailable)
     }
@@ -104,7 +122,7 @@ extension MobileFuseAdapterRewardedAd: IMFAdCallbackReceiver {
         log(.custom(errorMessage))
     }
 
-    func onUserEarnedReward() {
+    func onUserEarnedReward(_ ad: MFAd!) {
         log(.didReward)
         delegate?.didReward(self, details: [:]) ?? log(.delegateUnavailable)
     }

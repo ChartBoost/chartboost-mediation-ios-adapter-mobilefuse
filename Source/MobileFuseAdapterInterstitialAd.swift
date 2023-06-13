@@ -24,9 +24,14 @@ final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerAd {
 
         DispatchQueue.main.async {
             if let interstitialAd = MFInterstitialAd(placementId: self.request.partnerPlacement) {
-                self.loadCompletion = completion
                 self.ad = interstitialAd
+                self.loadCompletion = completion
+                // Set test mode to either true or false
+                interstitialAd.testMode = MobileFuseAdapterConfiguration.testMode
+                // Set self as the callback receiver
                 interstitialAd.register(self)
+                // The following block of code relies on a modified version of the SDK that stores the
+                // "signaldata" value we currently receive inside the "partner extras" section of the bid response
                 // BEGIN KLUDGE
                 if let signaldata = self.request.partnerSettings["signaldata"] as? String {
                     interstitialAd.load(withBiddingResponseToken: signaldata)
@@ -61,30 +66,23 @@ final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerAd {
         showCompletion = completion
 
         viewController.view.addSubview(ad)
-//        ad.updateViewFrame(viewController.view)
-//        let disposableView = UIView()
-//        disposableView.addSubview(ad)
         ad.show()
     }
 
     func invalidate() throws {
-//    }
-//
-//    deinit {
-        // Don't bother dispatching the task if self.ad isn't there
-        if self.ad != nil {
-            // Must be called from main thread
-            DispatchQueue.main.async {
-                if let ad = self.ad {
-                    ad.destroy()
-                }
+        log(.invalidateStarted)
+        DispatchQueue.main.async {
+            if let ad = self.ad {
+                ad.destroy()
+                self.log(.invalidateSucceeded)
+            } else {
+                self.log(.invalidateFailed(self.error(.invalidateFailureAdNotFound)))
             }
         }
     }
 }
 
 extension MobileFuseAdapterInterstitialAd: IMFAdCallbackReceiver {
-    @objc
     func onAdLoaded(_ ad: MFAd!) {
         log(.loadSucceeded)
         loadCompletion?(.success([:])) ?? log(.loadResultIgnored)

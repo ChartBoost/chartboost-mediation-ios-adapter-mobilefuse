@@ -9,14 +9,14 @@ import MobileFuseSDK
 import UIKit
 
 // Must conform to NSObjectProtocol to be a IMFInitializationCallbackReceiver
-final class MobileFuseAdapter: PartnerAdapter {
+final class MobileFuseAdapter: NSObject, PartnerAdapter {
     // String meaning: spec v1, NO we haven't asked the user, NO they did not opt out
     private var CCPAString = "1NN-"
     private var initializationCompletion: ((Error?) -> Void)?
     private var isSubjectToCoppa: Bool?
     private var privacyPreferences: MobileFusePrivacyPreferences
 
-    private func setPrivacyPreferences() {
+    private func applyPrivacyPreferences() {
         if let coppa = isSubjectToCoppa {
             privacyPreferences.setSubjectToCoppa(coppa)
         }
@@ -55,13 +55,11 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// - parameter completion: Closure to be performed by the adapter when it's done setting up. It should include an error indicating the cause for failure or `nil` if the operation finished successfully.
     func setUp(with configuration: PartnerConfiguration, completion: @escaping (Error?) -> Void) {
         log(.setUpStarted)
+        initializationCompletion = completion
         // MobileFuse's initialization needs to be done on the main thread
         // This isn't stated in their documentation but a warning in Xcode says we're accessing [UIApplication applicationState] here
         DispatchQueue.main.async {
             MobileFuse.initializeCoreServices()
-            // This init method doesn't trigger any callbacks, so we declare success right away
-            self.log(.setUpSucceded)
-            completion(nil)
         }
     }
 
@@ -75,9 +73,6 @@ final class MobileFuseAdapter: PartnerAdapter {
         tokenRequest.isTestMode = MobileFuseAdapterConfiguration.testMode
         if let token = MFBiddingTokenProvider.getTokenWith(tokenRequest) {
             completion(["signal": token])
-            // Example string from their docs that Colton suggested
-//            completion(["signal": "H4sIAAAAAAAAAGWOTQrCMBBG7zLrsVhDVXoHTyBdpE0qgfyRxFAJubuTulJXA+/NfN8UUMbDeC8gVPSavwy3/CEDjGDWDfAHRxnyLvuOdcdDWAZambm1DRbgXlEWwwHPeJkqQlZCun+D4INLbnE6Ej0RZY3jdaqV5DN+4uSW2nBGCW+p9OZmpeVKmlp3mr9eqdSYZKSjvr4BZcS0rdkAAAA="])
-//            completion(["signal": "H4sIAAAAAAAAAGWOTQrCMBBG7zLrsVhDVXoHTyBdpE0qgfyRxFAJubuTulJXA+/NfN8UUMbDeC8gVPSavwy3/CEDjGDWDfAHRxnyLvuOdcdDWAZambm1DRbgXlEWwwHPeJkqQlZCun+D4INLbnE6Ej0RZY3jdaqV5DN+4uSW2nBGCW+p9OZmpeVKmlp3mr9eqdSYZKSjvr4BZcS0rdkAAAA="])
             log(.fetchBidderInfoSucceeded(request))
         } else {
             completion(nil)
@@ -98,14 +93,15 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// - parameter privacyString: An IAB-compliant string indicating the CCPA status.
     func setCCPA(hasGivenConsent: Bool, privacyString: String) {
         CCPAString = privacyString
-        setPrivacyPreferences()
+        applyPrivacyPreferences()
+        log(.privacyUpdated(setting: "setUsPrivacyConsentString", value: privacyString))
     }
 
     /// Indicates if the user is subject to COPPA or not.
     /// - parameter isChildDirected: `true` if the user is subject to COPPA, `false` otherwise.
     func setCOPPA(isChildDirected: Bool) {
         isSubjectToCoppa = isChildDirected
-        setPrivacyPreferences()
+        applyPrivacyPreferences()
         log(.privacyUpdated(setting: "subjectToCoppa", value: isChildDirected))
     }
 
@@ -127,6 +123,22 @@ final class MobileFuseAdapter: PartnerAdapter {
             return MobileFuseAdapterRewardedAd(adapter: self, request: request, delegate: delegate)
         default:
             throw error(.loadFailureUnsupportedAdFormat)
+        }
+    }
+}
+
+extension MobileFuseAdapter:IMFInitializationCallbackReceiver {
+    func onInitSuccess(_ appId: String!, withPublisherId publisherId: String!) {
+        self.log(.setUpSucceded)
+        if let initializationCompletion = self.initializationCompletion {
+            initializationCompletion(nil)
+        }
+    }
+
+    func onInitError(_ appId: String!, withPublisherId publisherId: String!, withError error: MFAdError!) {
+        self.log(.setUpFailed(error))
+        if let initializationCompletion = self.initializationCompletion {
+            initializationCompletion(error)
         }
     }
 }

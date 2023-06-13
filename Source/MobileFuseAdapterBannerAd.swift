@@ -9,32 +9,33 @@ import MobileFuseSDK
 
 final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
 
+    // For storing a correctly typed reference to the ad instead of casting from MFAd in onAdLoaded()
+    private var mfBannerAd: MFBannerAd? = nil
+    // For storing a ViewController if one is passed in load()
+    private var viewController: UIViewController? = nil
+
     /// The partner ad view to display inline. E.g. a banner view.
     /// Should be nil for full-screen ads.
     var inlineView: UIView? {
         mfBannerAd
     }
 
-    var mfBannerAd: MFBannerAd? = nil
-
-    // tmp
-    // TODO: actually I think this needs to be permanent
-    var vc: UIViewController?
-
     /// Loads an ad.
     /// - parameter viewController: The view controller on which the ad will be presented on. Needed on load for some banners.
     /// - parameter completion: Closure to be performed once the ad has been loaded.
     func load(with viewController: UIViewController?, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
-
-        vc = viewController
-
         log(.loadStarted)
+        self.viewController = viewController
         let adSize = getMobileFuseBannerAdSize(size: request.size)
         if let bannerAd = MFBannerAd.init(placementId: request.partnerPlacement, with: adSize) {
             mfBannerAd = bannerAd
             loadCompletion = completion
+            // Set test mode to either true or false
+            bannerAd.testMode = MobileFuseAdapterConfiguration.testMode
+            // Set self as the callback receiver
             bannerAd.register(self)
-//            viewController?.view.addSubview(bannerAd)
+            // The following block of code relies on a modified version of the SDK that stores the
+            // "signaldata" value we currently receive inside the "partner extras" section of the bid response
             // BEGIN KLUDGE
             if let signaldata = self.request.partnerSettings["signaldata"] as? String {
                 bannerAd.load(withBiddingResponseToken: signaldata)
@@ -79,11 +80,13 @@ final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
     }
 
     func invalidate() throws {
-        // Don't bother dispatching the task if self.ad isn't there
-        if let ad = mfBannerAd { // TODO: retest with "if self.ad != nil {"
-            // Must be called from main thread
-            DispatchQueue.main.async {
+        log(.invalidateStarted)
+        DispatchQueue.main.async {
+            if let ad = self.mfBannerAd {
                 ad.destroy()
+                self.log(.invalidateSucceeded)
+            } else {
+                self.log(.invalidateFailed(self.error(.invalidateFailureAdNotFound)))
             }
         }
     }
@@ -101,11 +104,12 @@ extension MobileFuseAdapterBannerAd: IMFAdCallbackReceiver {
             return
         }
 
-//        ad.show()
-//        mfBannerAd?.isHidden = false
-//        self.mfBannerAd?.show(with: vc)
-        self.mfBannerAd?.show()
-
+        log(.showStarted)
+        if let vc = viewController {
+            self.mfBannerAd?.show(with: vc)
+        } else {
+            self.mfBannerAd?.show()
+        }
     }
 
     func onAdNotFilled(_ ad: MFAd!) {
