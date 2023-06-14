@@ -9,9 +9,7 @@ import MobileFuseSDK
 import UIKit
 
 // Must conform to NSObjectProtocol to be a IMFInitializationCallbackReceiver
-final class MobileFuseAdapter: NSObject, PartnerAdapter {
-    private let appIDKey = "app_id"
-    private let publisherIDkey = "" // TODO: Get this value from backend?
+final class MobileFuseAdapter: PartnerAdapter {
     // String meaning: spec v1, NO we haven't asked the user, NO they did not opt out
     private var CCPAString = "1NN-"
     private var initializationCompletion: ((Error?) -> Void)?
@@ -58,27 +56,6 @@ final class MobileFuseAdapter: NSObject, PartnerAdapter {
     func setUp(with configuration: PartnerConfiguration, completion: @escaping (Error?) -> Void) {
         log(.setUpStarted)
         initializationCompletion = completion
-
-//   Code that might be needed to *correctly* init the MobileFuse SDK
-//        guard let appID = configuration.credentials[appIDKey] as? String, !appID.isEmpty else {
-//            let error = self.error(.initializationFailureInvalidCredentials, description: "Credential missing: \(appIDKey)")
-//            self.log(.setUpFailed(error))
-//            completion(error)
-//            return
-//        }
-//
-//        guard let publisherID = configuration.credentials[publisherIDkey] as? String, !publisherID.isEmpty else {
-//            let error = self.error(.initializationFailureInvalidCredentials, description: "Credential missing: \(publisherIDkey)")
-//            self.log(.setUpFailed(error))
-//            completion(error)
-//            return
-//        }
-//
-//        // MobileFuse's initialization needs to be done on the main thread
-//        // This isn't stated in their documentation but a warning in Xcode says we're accessing [UIApplication applicationState] here
-//        DispatchQueue.main.async {
-//            MobileFuse.initWithAppId(appID, withPublisherId: publisherID, withDelegate: self)
-//        }
 
         // MobileFuse's initialization needs to be done on the main thread
         // This isn't stated in their documentation but a warning in Xcode says we're accessing [UIApplication applicationState] here
@@ -153,22 +130,6 @@ final class MobileFuseAdapter: NSObject, PartnerAdapter {
             return MobileFuseAdapterRewardedAd(adapter: self, request: request, delegate: delegate)
         default:
             throw error(.loadFailureUnsupportedAdFormat)
-        }
-    }
-}
-
-extension MobileFuseAdapter:IMFInitializationCallbackReceiver {
-    func onInitSuccess(_ appId: String!, withPublisherId publisherId: String!) {
-        self.log(.setUpSucceded)
-        if let initializationCompletion = self.initializationCompletion {
-            initializationCompletion(nil)
-        }
-    }
-
-    func onInitError(_ appId: String!, withPublisherId publisherId: String!, withError error: MFAdError!) {
-        self.log(.setUpFailed(error))
-        if let initializationCompletion = self.initializationCompletion {
-            initializationCompletion(error)
         }
     }
 }
