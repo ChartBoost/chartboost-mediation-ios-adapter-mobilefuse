@@ -30,18 +30,7 @@ final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerAd {
                 interstitialAd.testMode = MobileFuseAdapterConfiguration.testMode
                 // Set self as the callback receiver
                 interstitialAd.register(self)
-                // The following block of code relies on a modified version of the SDK that stores the
-                // "signaldata" value we currently receive inside the "partner extras" section of the bid response
-                // BEGIN KLUDGE
-                if let signaldata = self.request.partnerSettings["signaldata"] as? String {
-                    interstitialAd.load(withBiddingResponseToken: signaldata)
-                } else {
-                    let error = self.error(.loadFailureUnknown)
-                    self.log(.loadFailed(error))
-                    completion(.failure(error))
-                }
-                // END KLUDGE
-//                interstitialAd.load(withBiddingResponseToken: self.request.adm)
+                interstitialAd.load(withBiddingResponseToken: self.request.adm)
             } else {
                 let error = self.error(.loadFailureUnknown)
                 self.log(.loadFailed(error))

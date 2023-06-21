@@ -34,18 +34,7 @@ final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
             bannerAd.testMode = MobileFuseAdapterConfiguration.testMode
             // Set self as the callback receiver
             bannerAd.register(self)
-            // The following block of code relies on a modified version of the SDK that stores the
-            // "signaldata" value we currently receive inside the "partner extras" section of the bid response
-            // BEGIN KLUDGE
-            if let signaldata = self.request.partnerSettings["signaldata"] as? String {
-                bannerAd.load(withBiddingResponseToken: signaldata)
-            } else {
-                let error = self.error(.loadFailureUnknown)
-                self.log(.loadFailed(error))
-                completion(.failure(error))
-            }
-            // END KLUDGE
-//            ad.load(withBiddingResponseToken: request.adm)
+            bannerAd.load(withBiddingResponseToken: request.adm)
         } else {
             let error = error(.loadFailureUnknown)
             log(.loadFailed(error))
