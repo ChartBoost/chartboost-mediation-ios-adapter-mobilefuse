@@ -106,8 +106,8 @@ extension MobileFuseAdapterRewardedAd: IMFAdCallbackReceiver {
         delegate?.didExpire(self, details: [:]) ?? log(.delegateUnavailable)
     }
 
-    func onAdError(_ message: String!) {
-        let errorMessage = message ?? "An unidentified error occoured"
+    func onAdError(_ ad: MFAd!, withError error: MFAdError!) {
+        let errorMessage = error.localizedDescription
         log(.custom(errorMessage))
     }
 
