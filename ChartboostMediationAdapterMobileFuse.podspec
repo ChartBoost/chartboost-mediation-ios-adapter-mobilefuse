@@ -23,7 +23,7 @@ Pod::Spec.new do |spec|
   spec.dependency 'ChartboostMediationSDK', '~> 4.0'
 
   # Partner network SDK and version that this adapter is certified to work with.
-  spec.dependency 'MobileFuseSDK', '1.4.4'
+  spec.dependency 'MobileFuseSDK', '~> 1.4.4'
 
   # Indicates, that if use_frameworks! is specified, the pod should include a static library framework.
   spec.static_framework = true
