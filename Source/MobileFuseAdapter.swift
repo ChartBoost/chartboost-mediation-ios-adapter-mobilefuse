@@ -8,7 +8,6 @@ import Foundation
 import MobileFuseSDK
 import UIKit
 
-// Must conform to NSObjectProtocol to be a IMFInitializationCallbackReceiver
 final class MobileFuseAdapter: PartnerAdapter {
     // String meaning: spec v1, NO we haven't asked the user, NO they did not opt out
     private var privacyPreferences: MobileFusePrivacyPreferences = MobileFusePrivacyPreferences()
@@ -42,7 +41,6 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// - parameter completion: Closure to be performed by the adapter when it's done setting up. It should include an error indicating the cause for failure or `nil` if the operation finished successfully.
     func setUp(with configuration: PartnerConfiguration, completion: @escaping (Error?) -> Void) {
         log(.setUpStarted)
-        initializationCompletion = completion
 
         // MobileFuse's initialization needs to be done on the main thread
         // This isn't stated in their documentation but a warning in Xcode says we're accessing [UIApplication applicationState] here
@@ -66,12 +64,12 @@ final class MobileFuseAdapter: PartnerAdapter {
         tokenRequest.privacyPreferences = privacyPreferences
         tokenRequest.isTestMode = MobileFuseAdapterConfiguration.testMode
         if let token = MFBiddingTokenProvider.getTokenWith(tokenRequest) {
-            completion(["signal": token])
             log(.fetchBidderInfoSucceeded(request))
+            completion(["signal": token])
         } else {
-            completion(nil)
             let error = error(.prebidFailureUnknown)
             log(.fetchBidderInfoFailed(request, error: error))
+            completion(nil)
         }
     }
 
