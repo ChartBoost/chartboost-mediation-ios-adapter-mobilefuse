@@ -11,20 +11,7 @@ import UIKit
 // Must conform to NSObjectProtocol to be a IMFInitializationCallbackReceiver
 final class MobileFuseAdapter: PartnerAdapter {
     // String meaning: spec v1, NO we haven't asked the user, NO they did not opt out
-    private var CCPAString = "1NN-"
-    private var initializationCompletion: ((Error?) -> Void)?
-    private var isSubjectToCoppa: Bool?
-    private var privacyPreferences: MobileFusePrivacyPreferences
-
-    private func applyPrivacyPreferences() {
-        if let coppa = isSubjectToCoppa {
-            privacyPreferences.setSubjectToCoppa(coppa)
-        }
-        // "US Privacy Strings" have the same format as CCPA strings
-        // https://github.com/InteractiveAdvertisingBureau/USPrivacy/blob/master/CCPA/US%20Privacy%20String.md
-        privacyPreferences.setUsPrivacyConsentString(CCPAString)
-        MobileFuse.setPrivacyPreferences(privacyPreferences)
-    }
+    private var privacyPreferences: MobileFusePrivacyPreferences = MobileFusePrivacyPreferences()
 
     // MARK: PartnerAdapter
 
@@ -47,7 +34,7 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// - parameter storage: An object that exposes storage managed by the Chartboost Mediation SDK to the adapter.
     /// It includes a list of created `PartnerAd` instances. You may ignore this parameter if you don't need it.
     init(storage: PartnerAdapterStorage) {
-        privacyPreferences = MobileFusePrivacyPreferences()
+        // no-op
     }
 
     /// Does any setup needed before beginning to load ads.
@@ -99,16 +86,18 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// - parameter hasGivenConsent: A boolean indicating if the user has given consent.
     /// - parameter privacyString: An IAB-compliant string indicating the CCPA status.
     func setCCPA(hasGivenConsent: Bool, privacyString: String) {
-        CCPAString = privacyString
-        applyPrivacyPreferences()
+        // "US Privacy Strings" have the same format as CCPA strings
+        // https://github.com/InteractiveAdvertisingBureau/USPrivacy/blob/master/CCPA/US%20Privacy%20String.md
+        privacyPreferences.setUsPrivacyConsentString(privacyString)
+        MobileFuse.setPrivacyPreferences(privacyPreferences)
         log(.privacyUpdated(setting: "setUsPrivacyConsentString", value: privacyString))
     }
 
     /// Indicates if the user is subject to COPPA or not.
     /// - parameter isChildDirected: `true` if the user is subject to COPPA, `false` otherwise.
     func setCOPPA(isChildDirected: Bool) {
-        isSubjectToCoppa = isChildDirected
-        applyPrivacyPreferences()
+        privacyPreferences.setSubjectToCoppa(isChildDirected)
+        MobileFuse.setPrivacyPreferences(privacyPreferences)
         log(.privacyUpdated(setting: "subjectToCoppa", value: isChildDirected))
     }
 
