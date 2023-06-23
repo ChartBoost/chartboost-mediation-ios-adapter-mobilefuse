@@ -114,11 +114,15 @@ final class MobileFuseAdapter: PartnerAdapter {
             return MobileFuseAdapterBannerAd(adapter: self, request: request, delegate: delegate)
         case .interstitial:
             return MobileFuseAdapterInterstitialAd(adapter: self, request: request, delegate: delegate)
-        // There's only one type of Rewarded Ad, but MobileFuse also calls it Rewarded Interstitial sometimes
-        case .rewarded, .rewardedInterstitial:
+        case .rewarded:
             return MobileFuseAdapterRewardedAd(adapter: self, request: request, delegate: delegate)
         default:
-            throw error(.loadFailureUnsupportedAdFormat)
+            // There's only one type of Rewarded Ad, but MobileFuse also calls it Rewarded Interstitial sometimes
+            if request.format.rawValue == "rewarded_interstitial" {
+                return MobileFuseAdapterRewardedAd(adapter: self, request: request, delegate: delegate)
+            } else {
+                throw error(.loadFailureUnsupportedAdFormat)
+            }
         }
     }
 }
