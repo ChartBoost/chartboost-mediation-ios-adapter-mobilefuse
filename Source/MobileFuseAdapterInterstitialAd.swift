@@ -14,7 +14,7 @@ final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerAd {
     var inlineView: UIView? { nil }
 
     /// The MobileFuseSDK ad instance.
-    var ad: MFInterstitialAd?
+    private var ad: MFInterstitialAd?
 
     /// Loads an ad.
     /// - parameter viewController: The view controller on which the ad will be presented on. Needed on load for some banners.
@@ -54,6 +54,8 @@ final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerAd {
         }
         showCompletion = completion
 
+        // MobileFuse actually tells you to do this, and I haven't found a workaround to make
+        // the ad load without adding it as a subview first https://docs.mobilefuse.com/docs/ios-interstitial-ads
         viewController.view.addSubview(ad)
         ad.show()
     }

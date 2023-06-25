@@ -10,9 +10,9 @@ import MobileFuseSDK
 final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
 
     // For storing a correctly typed reference to the ad instead of casting from MFAd in onAdLoaded()
-    private var mfBannerAd: MFBannerAd? = nil
+    private var mfBannerAd: MFBannerAd?
     // For storing a ViewController if one is passed in load()
-    private var viewController: UIViewController? = nil
+    private weak var viewController: UIViewController?
 
     /// The partner ad view to display inline. E.g. a banner view.
     /// Should be nil for full-screen ads.
@@ -27,7 +27,7 @@ final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
         log(.loadStarted)
         self.viewController = viewController
         let adSize = getMobileFuseBannerAdSize(size: request.size)
-        if let bannerAd = MFBannerAd.init(placementId: request.partnerPlacement, with: adSize) {
+        if let bannerAd = MFBannerAd(placementId: request.partnerPlacement, with: adSize) {
             mfBannerAd = bannerAd
             loadCompletion = completion
             // Set test mode to either true or false
@@ -36,7 +36,7 @@ final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
             bannerAd.register(self)
             bannerAd.load(withBiddingResponseToken: request.adm)
         } else {
-            let error = error(.loadFailureUnknown)
+            let error = error(.loadFailureUnknown, description: "Failed to create MFBannerAd instance")
             log(.loadFailed(error))
             completion(.failure(error))
         }
@@ -88,8 +88,8 @@ extension MobileFuseAdapterBannerAd: IMFAdCallbackReceiver {
         loadCompletion = nil
 
         guard let ready = self.mfBannerAd?.isAdReady, ready  else {
-            loadCompletion?(.failure(error(.showFailureAdNotReady))) ?? log(.showResultIgnored)
-            loadCompletion = nil
+            showCompletion?(.failure(error(.showFailureAdNotReady))) ?? log(.showResultIgnored)
+            showCompletion = nil
             return
         }
 
@@ -115,8 +115,6 @@ extension MobileFuseAdapterBannerAd: IMFAdCallbackReceiver {
 
     func onAdRendered(_ ad: MFAd!) {
         log(.showSucceeded)
-        showCompletion?(.success([:])) ?? log(.showResultIgnored)
-        showCompletion = nil
     }
 
     func onAdClicked(_ ad: MFAd!) {
