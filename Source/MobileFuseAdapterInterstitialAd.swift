@@ -25,6 +25,12 @@ final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerAd {
     func load(with viewController: UIViewController?, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
         log(.loadStarted)
 
+        guard let adm = request.adm, adm.isEmpty == false else {
+            let error = error(.loadFailureInvalidAdMarkup)
+            completion(.failure(error))
+            return
+        }
+
         DispatchQueue.main.async {
             if let interstitialAd = MFInterstitialAd(placementId: self.request.partnerPlacement) {
                 self.ad = interstitialAd
@@ -33,7 +39,7 @@ final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerAd {
                 interstitialAd.testMode = MobileFuseAdapterConfiguration.testMode
                 // Set self as the callback receiver
                 interstitialAd.register(self)
-                interstitialAd.load(withBiddingResponseToken: self.request.adm)
+                interstitialAd.load(withBiddingResponseToken: adm)
             } else {
                 let error = self.error(.loadFailureUnknown)
                 self.log(.loadFailed(error))

@@ -26,6 +26,13 @@ final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
     func load(with viewController: UIViewController?, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
         log(.loadStarted)
         self.viewController = viewController
+
+        guard let adm = request.adm, adm.isEmpty == false else {
+            let error = error(.loadFailureInvalidAdMarkup)
+            completion(.failure(error))
+            return
+        }
+
         let adSize = getMobileFuseBannerAdSize(size: request.size)
         if let bannerAd = MFBannerAd(placementId: request.partnerPlacement, with: adSize) {
             mfBannerAd = bannerAd
@@ -34,7 +41,7 @@ final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
             bannerAd.testMode = MobileFuseAdapterConfiguration.testMode
             // Set self as the callback receiver
             bannerAd.register(self)
-            bannerAd.load(withBiddingResponseToken: request.adm)
+            bannerAd.load(withBiddingResponseToken: adm)
         } else {
             let error = error(.loadFailureUnknown, description: "Failed to create MFBannerAd instance")
             log(.loadFailed(error))

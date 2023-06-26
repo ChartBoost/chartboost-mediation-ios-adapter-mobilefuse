@@ -25,6 +25,12 @@ final class MobileFuseAdapterRewardedAd: MobileFuseAdapterAd, PartnerAd {
     func load(with viewController: UIViewController?, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
         log(.loadStarted)
 
+        guard let adm = request.adm, adm.isEmpty == false else {
+            let error = error(.loadFailureInvalidAdMarkup)
+            completion(.failure(error))
+            return
+        }
+
         DispatchQueue.main.async {
             if let rewardedAd = MFRewardedAd(placementId: self.request.partnerPlacement) {
                 self.ad = rewardedAd
@@ -33,7 +39,7 @@ final class MobileFuseAdapterRewardedAd: MobileFuseAdapterAd, PartnerAd {
                 rewardedAd.testMode = MobileFuseAdapterConfiguration.testMode
                 // Set self as the callback receiver
                 rewardedAd.register(self)
-                rewardedAd.load(withBiddingResponseToken: self.request.adm)
+                rewardedAd.load(withBiddingResponseToken: adm)
             } else {
                 let error = self.error(.loadFailureUnknown)
                 self.log(.loadFailed(error))
