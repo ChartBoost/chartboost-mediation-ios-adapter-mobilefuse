@@ -53,18 +53,17 @@ final class MobileFuseAdapterRewardedAd: MobileFuseAdapterAd, PartnerAd {
     /// - parameter viewController: The view controller on which the ad will be presented on.
     /// - parameter completion: Closure to be performed once the ad has been shown.
     func show(with viewController: UIViewController, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
-        showInProgress = true
         log(.showStarted)
 
         guard let ad = ad, ad.isLoaded() else {
-            showInProgress = false
             let error = error(.showFailureAdNotReady)
             log(.showFailed(error))
             completion(.failure(error))
             return
         }
-        showCompletion = completion
 
+        showCompletion = completion
+        showInProgress = true
         // MobileFuse actually tells you to do this, and I haven't found a workaround to make
         // the ad load without adding it as a subview first https://docs.mobilefuse.com/docs/ios-rewarded-ads
         // ad will be removed from its superview when MFAd.destroy() is called by our invalidate() method
