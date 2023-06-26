@@ -87,9 +87,9 @@ extension MobileFuseAdapterBannerAd: IMFAdCallbackReceiver {
         loadCompletion?(.success([:])) ?? log(.loadResultIgnored)
         loadCompletion = nil
 
-        guard let ready = self.mfBannerAd?.isAdReady, ready  else {
-            showCompletion?(.failure(error(.showFailureAdNotReady))) ?? log(.showResultIgnored)
-            showCompletion = nil
+        guard let ready = self.mfBannerAd?.isLoaded(), ready  else {
+            let error = error(.showFailureAdNotReady)
+            log(.showFailed(error))
             return
         }
 

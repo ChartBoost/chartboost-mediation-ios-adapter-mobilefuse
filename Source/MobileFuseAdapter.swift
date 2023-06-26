@@ -9,7 +9,6 @@ import MobileFuseSDK
 import UIKit
 
 final class MobileFuseAdapter: PartnerAdapter {
-    // String meaning: spec v1, NO we haven't asked the user, NO they did not opt out
     private var privacyPreferences: MobileFusePrivacyPreferences = MobileFusePrivacyPreferences()
 
     // MARK: PartnerAdapter
