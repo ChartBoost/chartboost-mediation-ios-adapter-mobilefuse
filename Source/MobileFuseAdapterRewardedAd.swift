@@ -16,6 +16,9 @@ final class MobileFuseAdapterRewardedAd: MobileFuseAdapterAd, PartnerAd {
     /// The MobileFuseSDK ad instance.
     private var ad: MFRewardedAd?
 
+    /// Tracks whether a show operation is in progress
+    private var showInProgress = false
+
     /// Loads an ad.
     /// - parameter viewController: The view controller on which the ad will be presented on. Needed on load for some banners.
     /// - parameter completion: Closure to be performed once the ad has been loaded.
@@ -44,9 +47,11 @@ final class MobileFuseAdapterRewardedAd: MobileFuseAdapterAd, PartnerAd {
     /// - parameter viewController: The view controller on which the ad will be presented on.
     /// - parameter completion: Closure to be performed once the ad has been shown.
     func show(with viewController: UIViewController, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
+        showInProgress = true
         log(.showStarted)
 
         guard let ad = ad, ad.isLoaded() else {
+            showInProgress = false
             let error = error(.showFailureAdNotReady)
             log(.showFailed(error))
             completion(.failure(error))
@@ -93,6 +98,7 @@ extension MobileFuseAdapterRewardedAd: IMFAdCallbackReceiver {
     }
 
     func onAdRendered(_ ad: MFAd!) {
+        showInProgress = false
         log(.showSucceeded)
         showCompletion?(.success([:])) ?? log(.showResultIgnored)
         showCompletion = nil
@@ -109,8 +115,14 @@ extension MobileFuseAdapterRewardedAd: IMFAdCallbackReceiver {
     }
 
     func onAdError(_ ad: MFAd!, withError error: MFAdError!) {
-        let errorMessage = error.localizedDescription
-        log(.custom(errorMessage))
+        if showInProgress {
+            log(.showFailed(error))
+            showCompletion?(.failure(error)) ?? log(.showResultIgnored)
+            showCompletion = nil
+        } else {
+            let errorMessage = error.localizedDescription
+            log(.custom(errorMessage))
+        }
     }
 
     func onUserEarnedReward(_ ad: MFAd!) {
