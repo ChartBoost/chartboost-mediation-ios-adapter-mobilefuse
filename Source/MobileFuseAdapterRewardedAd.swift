@@ -67,6 +67,7 @@ final class MobileFuseAdapterRewardedAd: MobileFuseAdapterAd, PartnerAd {
 
         // MobileFuse actually tells you to do this, and I haven't found a workaround to make
         // the ad load without adding it as a subview first https://docs.mobilefuse.com/docs/ios-rewarded-ads
+        // ad will be removed from its superview when MFAd.destroy() is called by our invalidate() method
         viewController.view.addSubview(ad)
         ad.show()
     }
