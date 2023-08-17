@@ -19,7 +19,7 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// The version of the adapter.
     /// It should have either 5 or 6 digits separated by periods, where the first digit is Chartboost Mediation SDK's major version, the last digit is the adapter's build version, and intermediate digits are the partner SDK's version.
     /// Format: `<Chartboost Mediation major version>.<Partner major version>.<Partner minor version>.<Partner patch version>.<Partner build version>.<Adapter build version>` where `.<Partner build version>` is optional.
-    let adapterVersion = "4.1.4.4.0"
+    let adapterVersion = "4.1.6.0.0"
 
     /// The partner's unique identifier.
     let partnerIdentifier = "mobilefuse"
@@ -44,10 +44,7 @@ final class MobileFuseAdapter: PartnerAdapter {
         // MobileFuse's initialization needs to be done on the main thread
         // This isn't stated in their documentation but a warning in Xcode says we're accessing [UIApplication applicationState] here
         DispatchQueue.main.async {
-            // initializeCoreServices isn't the recommended way to init the SDK. I used it early on
-            // as a stopgap and only today realized that it needs to be replaced with a call to one of
-            // the methods that accepts a app ID (and maybe also a publisher ID?)
-            MobileFuse.initializeCoreServices()
+            MobileFuse.initWithDelegate(nil)
             // This init method doesn't trigger callbacks, so we assume success and complete here
             self.log(.setUpSucceded)
             completion(nil)
