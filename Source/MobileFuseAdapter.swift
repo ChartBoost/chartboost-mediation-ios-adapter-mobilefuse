@@ -59,13 +59,9 @@ final class MobileFuseAdapter: PartnerAdapter {
         let tokenRequest = MFBiddingTokenRequest()
         tokenRequest.privacyPreferences = privacyPreferences
         tokenRequest.isTestMode = MobileFuseAdapterConfiguration.testMode
-        if let token = MFBiddingTokenProvider.getTokenWith(tokenRequest) {
+        MFBiddingTokenProvider.getTokenWith(tokenRequest) { token in
             log(.fetchBidderInfoSucceeded(request))
             completion(["signal": token])
-        } else {
-            let error = error(.prebidFailureUnknown)
-            log(.fetchBidderInfoFailed(request, error: error))
-            completion(nil)
         }
     }
 
