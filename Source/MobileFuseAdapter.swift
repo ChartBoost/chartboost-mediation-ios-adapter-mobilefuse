@@ -124,12 +124,12 @@ final class MobileFuseAdapterInitializationDelegate: NSObject, IMFInitialization
         self.completionBlock = completionHandler
     }
 
-    func onInitSuccess() {
+    func onInitSuccess(_ appId: String, withPublisherId publisherId: String) {
         parentAdapter?.log(.setUpSucceded)
         completionBlock(nil)
     }
 
-    func onInitError(_ error: Error) {
+    func onInitError(_ appId: String, withPublisherId publisherId: String, withError error: MFAdError) {
         parentAdapter?.log(.setUpFailed(error))
         completionBlock(error)
     }
