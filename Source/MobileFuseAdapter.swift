@@ -117,6 +117,8 @@ final class MobileFuseAdapter: PartnerAdapter {
             // There's only one type of Rewarded Ad, but MobileFuse also calls it Rewarded Interstitial sometimes
             if request.format.rawValue == "rewarded_interstitial" {
                 return MobileFuseAdapterRewardedAd(adapter: self, request: request, delegate: delegate)
+            } else if request.format.rawValue == "adaptive_banner" {
+                return MobileFuseAdapterBannerAd(adapter: self, request: request, delegate: delegate)
             } else {
                 throw error(.loadFailureUnsupportedAdFormat)
             }

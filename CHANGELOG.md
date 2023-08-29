@@ -4,6 +4,7 @@ Note the first digit of every adapter version corresponds to the major version o
 Adapters are compatible with any Chartboost Mediation SDK version within that major version.
 
 ### 4.1.4.4.1
+- Add support for Adaptive Banners.
 - This version of the adapters has been certified with MobileFuseSDK 1.4.4.
 
 ### 4.1.4.4.0
