@@ -10,6 +10,7 @@ import UIKit
 
 final class MobileFuseAdapter: PartnerAdapter {
     private var privacyPreferences: MobileFusePrivacyPreferences = MobileFusePrivacyPreferences()
+    private var initializationDelegate: MobileFuseAdapterInitializationDelegate?
 
     // MARK: PartnerAdapter
 
@@ -40,17 +41,11 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// - parameter completion: Closure to be performed by the adapter when it's done setting up. It should include an error indicating the cause for failure or `nil` if the operation finished successfully.
     func setUp(with configuration: PartnerConfiguration, completion: @escaping (Error?) -> Void) {
         log(.setUpStarted)
-
+        initializationDelegate = MobileFuseAdapterInitializationDelegate(parentAdapter: self, completionHandler: completion)
         // MobileFuse's initialization needs to be done on the main thread
         // This isn't stated in their documentation but a warning in Xcode says we're accessing [UIApplication applicationState] here
         DispatchQueue.main.async {
-            // initializeCoreServices isn't the recommended way to init the SDK. I used it early on
-            // as a stopgap and only today realized that it needs to be replaced with a call to one of
-            // the methods that accepts a app ID (and maybe also a publisher ID?)
-            MobileFuse.initializeCoreServices()
-            // This init method doesn't trigger callbacks, so we assume success and complete here
-            self.log(.setUpSucceded)
-            completion(nil)
+            MobileFuse.initWithDelegate(self.initializationDelegate)
         }
     }
 
@@ -62,13 +57,9 @@ final class MobileFuseAdapter: PartnerAdapter {
         let tokenRequest = MFBiddingTokenRequest()
         tokenRequest.privacyPreferences = privacyPreferences
         tokenRequest.isTestMode = MobileFuseAdapterConfiguration.testMode
-        if let token = MFBiddingTokenProvider.getTokenWith(tokenRequest) {
-            log(.fetchBidderInfoSucceeded(request))
+        MFBiddingTokenProvider.getTokenWith(tokenRequest) { token in
+            self.log(.fetchBidderInfoSucceeded(request))
             completion(["signal": token])
-        } else {
-            let error = error(.prebidFailureUnknown)
-            log(.fetchBidderInfoFailed(request, error: error))
-            completion(nil)
         }
     }
 
@@ -123,5 +114,25 @@ final class MobileFuseAdapter: PartnerAdapter {
                 throw error(.loadFailureUnsupportedAdFormat)
             }
         }
+    }
+}
+
+final class MobileFuseAdapterInitializationDelegate: NSObject, IMFInitializationCallbackReceiver {
+    weak var parentAdapter: MobileFuseAdapter?
+    let completionBlock: (Error?) -> Void
+
+    init(parentAdapter: MobileFuseAdapter, completionHandler: @escaping (Error?) -> Void) {
+        self.parentAdapter = parentAdapter
+        self.completionBlock = completionHandler
+    }
+
+    func onInitSuccess(_ appId: String, withPublisherId publisherId: String) {
+        parentAdapter?.log(.setUpSucceded)
+        completionBlock(nil)
+    }
+
+    func onInitError(_ appId: String, withPublisherId publisherId: String, withError error: MFAdError) {
+        parentAdapter?.log(.setUpFailed(error))
+        completionBlock(error)
     }
 }
