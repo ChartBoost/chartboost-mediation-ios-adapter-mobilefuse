@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Chartboost, Inc.
+// Copyright 2023-2023 Chartboost, Inc.
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
@@ -97,6 +97,7 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// - parameter request: Information about the ad load request.
     /// - parameter delegate: The delegate that will receive ad life-cycle notifications.
     func makeAd(request: PartnerAdLoadRequest, delegate: PartnerAdDelegate) throws -> PartnerAd {
+        // This partner supports multiple loads for the same partner placement.
         switch request.format {
         case .banner:
             return MobileFuseAdapterBannerAd(adapter: self, request: request, delegate: delegate)
