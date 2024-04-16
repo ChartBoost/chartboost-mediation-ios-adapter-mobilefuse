@@ -23,7 +23,7 @@ final class MobileFuseAdapter: PartnerAdapter {
     let adapterVersion = "4.1.7.0.0"
 
     /// The partner's unique identifier.
-    let partnerIdentifier = "mobilefuse"
+    let partnerID = "mobilefuse"
 
     /// The human-friendly partner name.
     let partnerDisplayName = "MobileFuse"
@@ -39,7 +39,7 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// Does any setup needed before beginning to load ads.
     /// - parameter configuration: Configuration data for the adapter to set up.
     /// - parameter completion: Closure to be performed by the adapter when it's done setting up. It should include an error indicating the cause for failure or `nil` if the operation finished successfully.
-    func setUp(with configuration: PartnerConfiguration, completion: @escaping (Error?) -> Void) {
+    func setUp(with configuration: PartnerConfiguration, completion: @escaping (Result<PartnerDetails, Error>) -> Void) {
         log(.setUpStarted)
         initializationDelegate = MobileFuseAdapterInitializationDelegate(parentAdapter: self, completionHandler: completion)
         // MobileFuse's initialization needs to be done on the main thread
@@ -52,14 +52,14 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// Fetches bidding tokens needed for the partner to participate in an auction.
     /// - parameter request: Information about the ad load request.
     /// - parameter completion: Closure to be performed with the fetched info.
-    func fetchBidderInformation(request: PreBidRequest, completion: @escaping ([String : String]?) -> Void) {
+    func fetchBidderInformation(request: PartnerAdPreBidRequest, completion: @escaping (Result<[String : String], Error>) -> Void) {
         log(.fetchBidderInfoStarted(request))
         let tokenRequest = MFBiddingTokenRequest()
         tokenRequest.privacyPreferences = privacyPreferences
         tokenRequest.isTestMode = MobileFuseAdapterConfiguration.testMode
         MFBiddingTokenProvider.getTokenWith(tokenRequest) { token in
             self.log(.fetchBidderInfoSucceeded(request))
-            completion(["signal": token])
+            completion(.success(["signal": token]))
         }
     }
 
@@ -99,41 +99,34 @@ final class MobileFuseAdapter: PartnerAdapter {
     func makeAd(request: PartnerAdLoadRequest, delegate: PartnerAdDelegate) throws -> PartnerAd {
         // This partner supports multiple loads for the same partner placement.
         switch request.format {
-        case .banner:
+        case PartnerAdFormats.banner, PartnerAdFormats.adaptiveBanner:
             return MobileFuseAdapterBannerAd(adapter: self, request: request, delegate: delegate)
-        case .interstitial:
+        case PartnerAdFormats.interstitial:
             return MobileFuseAdapterInterstitialAd(adapter: self, request: request, delegate: delegate)
-        case .rewarded:
+        case PartnerAdFormats.rewarded, PartnerAdFormats.rewardedInterstitial:
             return MobileFuseAdapterRewardedAd(adapter: self, request: request, delegate: delegate)
         default:
-            // There's only one type of Rewarded Ad, but MobileFuse also calls it Rewarded Interstitial sometimes
-            if request.format.rawValue == "rewarded_interstitial" {
-                return MobileFuseAdapterRewardedAd(adapter: self, request: request, delegate: delegate)
-            } else if request.format.rawValue == "adaptive_banner" {
-                return MobileFuseAdapterBannerAd(adapter: self, request: request, delegate: delegate)
-            } else {
-                throw error(.loadFailureUnsupportedAdFormat)
-            }
+            throw error(.loadFailureUnsupportedAdFormat)
         }
     }
 }
 
 final class MobileFuseAdapterInitializationDelegate: NSObject, IMFInitializationCallbackReceiver {
     weak var parentAdapter: MobileFuseAdapter?
-    let completionBlock: (Error?) -> Void
+    let completionBlock: (Result<PartnerDetails, Error>) -> Void
 
-    init(parentAdapter: MobileFuseAdapter, completionHandler: @escaping (Error?) -> Void) {
+    init(parentAdapter: MobileFuseAdapter, completionHandler: @escaping (Result<PartnerDetails, Error>) -> Void) {
         self.parentAdapter = parentAdapter
         self.completionBlock = completionHandler
     }
 
     func onInitSuccess(_ appId: String, withPublisherId publisherId: String) {
         parentAdapter?.log(.setUpSucceded)
-        completionBlock(nil)
+        completionBlock(.success([:]))
     }
 
     func onInitError(_ appId: String, withPublisherId publisherId: String, withError error: MFAdError) {
         parentAdapter?.log(.setUpFailed(error))
-        completionBlock(error)
+        completionBlock(.failure(error))
     }
 }
