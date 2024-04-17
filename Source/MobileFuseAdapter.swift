@@ -99,7 +99,7 @@ final class MobileFuseAdapter: PartnerAdapter {
     func makeAd(request: PartnerAdLoadRequest, delegate: PartnerAdDelegate) throws -> PartnerAd {
         // This partner supports multiple loads for the same partner placement.
         switch request.format {
-        case PartnerAdFormats.banner, PartnerAdFormats.adaptiveBanner:
+        case PartnerAdFormats.banner:
             return MobileFuseAdapterBannerAd(adapter: self, request: request, delegate: delegate)
         case PartnerAdFormats.interstitial:
             return MobileFuseAdapterInterstitialAd(adapter: self, request: request, delegate: delegate)
