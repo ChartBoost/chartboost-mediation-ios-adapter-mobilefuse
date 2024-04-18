@@ -7,7 +7,7 @@ import ChartboostMediationSDK
 import Foundation
 import MobileFuseSDK
 
-final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
+final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerBannerAd {
     /// The partner banner ad view to display.
     var view: UIView? { mfBannerAd }
 
