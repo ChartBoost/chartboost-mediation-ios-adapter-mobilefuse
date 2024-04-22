@@ -7,23 +7,18 @@ import ChartboostMediationSDK
 import Foundation
 import MobileFuseSDK
 
-final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
+final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerBannerAd {
+    /// The partner banner ad view to display.
+    var view: UIView? { mfBannerAd }
+
+    /// The loaded partner ad banner size.
+    var size: PartnerBannerSize?
 
     // For storing a correctly typed reference to the ad instead of casting from MFAd in onAdLoaded()
     private var mfBannerAd: MFBannerAd?
     // For storing a ViewController if one is passed in load()
     private weak var viewController: UIViewController?
 
-    /// The partner ad view to display inline. E.g. a banner view.
-    /// Should be nil for full-screen ads.
-    var inlineView: UIView? {
-        mfBannerAd
-    }
-
-    /// The loaded partner ad banner size.
-    /// Should be `nil` for full-screen ads.
-    var bannerSize: PartnerBannerSize?
-    
     /// Loads an ad.
     /// - parameter viewController: The view controller on which the ad will be presented on. Needed on load for some banners.
     /// - parameter completion: Closure to be performed once the ad has been loaded.
@@ -43,7 +38,7 @@ final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
             log(.loadFailed(error))
             return completion(.failure(error))
         }
-        bannerSize = PartnerBannerSize(size: loadedSize, type: .fixed)
+        size = PartnerBannerSize(size: loadedSize, type: .fixed)
 
         if let bannerAd = MFBannerAd(placementId: request.partnerPlacement, with: partnerSize) {
             mfBannerAd = bannerAd
@@ -58,14 +53,6 @@ final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
             log(.loadFailed(error))
             completion(.failure(error))
         }
-    }
-
-    /// Shows a loaded ad.
-    /// It will never get called for banner ads. You may leave the implementation blank for that ad format.
-    /// - parameter viewController: The view controller on which the ad will be presented on.
-    /// - parameter completion: Closure to be performed once the ad has been shown.
-    func show(with viewController: UIViewController, completion: @escaping (Result<PartnerDetails, Error>) -> Void) {
-        // no-op
     }
 
     func invalidate() throws {
