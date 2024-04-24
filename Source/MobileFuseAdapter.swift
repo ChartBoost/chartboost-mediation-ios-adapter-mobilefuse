@@ -41,6 +41,11 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// - parameter completion: Closure to be performed by the adapter when it's done setting up. It should include an error indicating the cause for failure or `nil` if the operation finished successfully.
     func setUp(with configuration: PartnerConfiguration, completion: @escaping (Result<PartnerDetails, Error>) -> Void) {
         log(.setUpStarted)
+
+        // Apply initial consents
+        setConsents(configuration.consents, modifiedKeys: Set(configuration.consents.keys))
+        setIsUserUnderage(configuration.isUserUnderage)
+
         initializationDelegate = MobileFuseAdapterInitializationDelegate(parentAdapter: self, completionHandler: completion)
         // MobileFuse's initialization needs to be done on the main thread
         // This isn't stated in their documentation but a warning in Xcode says we're accessing [UIApplication applicationState] here
