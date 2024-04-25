@@ -9,20 +9,20 @@ import MobileFuseSDK
 @objc public class MobileFuseAdapterConfiguration: NSObject {
 
     /// The version of the partner SDK.
-    @objc static var partnerSDKVersion: String {
+    @objc public static var partnerSDKVersion: String {
         MobileFuse.version() ?? ""
     }
 
     /// The version of the adapter.
     /// It should have either 5 or 6 digits separated by periods, where the first digit is Chartboost Mediation SDK's major version, the last digit is the adapter's build version, and intermediate digits are the partner SDK's version.
     /// Format: `<Chartboost Mediation major version>.<Partner major version>.<Partner minor version>.<Partner patch version>.<Partner build version>.<Adapter build version>` where `.<Partner build version>` is optional.
-    @objc static let adapterVersion = "4.1.7.0.0"
+    @objc public static let adapterVersion = "4.1.7.0.0"
 
     /// The partner's unique identifier.
-    @objc static let partnerID = "mobilefuse"
+    @objc public static let partnerID = "mobilefuse"
 
     /// The human-friendly partner name.
-    @objc static let partnerDisplayName = "MobileFuse"
+    @objc public static let partnerDisplayName = "MobileFuse"
 
     /// Flag that can optionally be set to enable the partner's test mode.
     /// Disabled by default.
