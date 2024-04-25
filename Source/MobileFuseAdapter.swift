@@ -41,6 +41,11 @@ final class MobileFuseAdapter: PartnerAdapter {
     /// - parameter completion: Closure to be performed by the adapter when it's done setting up. It should include an error indicating the cause for failure or `nil` if the operation finished successfully.
     func setUp(with configuration: PartnerConfiguration, completion: @escaping (Result<PartnerDetails, Error>) -> Void) {
         log(.setUpStarted)
+
+        // Apply initial consents
+        setConsents(configuration.consents, modifiedKeys: Set(configuration.consents.keys))
+        setIsUserUnderage(configuration.isUserUnderage)
+
         initializationDelegate = MobileFuseAdapterInitializationDelegate(parentAdapter: self, completionHandler: completion)
         // MobileFuse's initialization needs to be done on the main thread
         // This isn't stated in their documentation but a warning in Xcode says we're accessing [UIApplication applicationState] here
@@ -63,30 +68,37 @@ final class MobileFuseAdapter: PartnerAdapter {
         }
     }
 
-    /// Indicates if GDPR applies or not and the user's GDPR consent status.
-    /// - parameter applies: `true` if GDPR applies, `false` if not, `nil` if the publisher has not provided this information.
-    /// - parameter status: One of the `GDPRConsentStatus` values depending on the user's pMobileFuse.
-    func setGDPR(applies: Bool?, status: GDPRConsentStatus) {
-        // GDPR consent setting is a NO-OP as Chartboost Mediation does not support an IAB-compatible privacy consent string
+    /// Indicates that the user consent has changed.
+    /// - parameter consents: The new consents value, including both modified and unmodified consents.
+    /// - parameter modifiedKeys: A set containing all the keys that changed.
+    func setConsents(_ consents: [ConsentKey: ConsentValue], modifiedKeys: Set<ConsentKey>) {
+        guard modifiedKeys.contains(ConsentKeys.tcf)
+                || modifiedKeys.contains(ConsentKeys.usp)
+                || modifiedKeys.contains(ConsentKeys.gpp)
+        else {
+            return
+        }
+        if let tcfString = consents[ConsentKeys.tcf] {
+            privacyPreferences.setIabConsentString(tcfString)
+            log(.privacyUpdated(setting: "setIabConsentString", value: tcfString))
+        }
+        if let uspString = consents[ConsentKeys.usp] {
+            privacyPreferences.setUsPrivacyConsentString(uspString)
+            log(.privacyUpdated(setting: "setUsPrivacyConsentString", value: uspString))
+        }
+        if let gppString = consents[ConsentKeys.gpp] {
+            privacyPreferences.setGppConsentString(gppString)
+            log(.privacyUpdated(setting: "setGppConsentString", value: gppString))
+        }
+        MobileFuse.setPrivacyPreferences(privacyPreferences)
     }
 
-    /// Indicates the CCPA status both as a boolean and as an IAB US privacy string.
-    /// - parameter hasGivenConsent: A boolean indicating if the user has given consent.
-    /// - parameter privacyString: An IAB-compliant string indicating the CCPA status.
-    func setCCPA(hasGivenConsent: Bool, privacyString: String) {
-        // "US Privacy Strings" have the same format as CCPA strings
-        // https://github.com/InteractiveAdvertisingBureau/USPrivacy/blob/master/CCPA/US%20Privacy%20String.md
-        privacyPreferences.setUsPrivacyConsentString(privacyString)
+    /// Indicates that the user is underage signal has changed.
+    /// - parameter isUserUnderage: `true` if the user is underage as determined by the publisher, `false` otherwise.
+    func setIsUserUnderage(_ isUserUnderage: Bool) {
+        privacyPreferences.setSubjectToCoppa(isUserUnderage)
         MobileFuse.setPrivacyPreferences(privacyPreferences)
-        log(.privacyUpdated(setting: "setUsPrivacyConsentString", value: privacyString))
-    }
-
-    /// Indicates if the user is subject to COPPA or not.
-    /// - parameter isChildDirected: `true` if the user is subject to COPPA, `false` otherwise.
-    func setCOPPA(isChildDirected: Bool) {
-        privacyPreferences.setSubjectToCoppa(isChildDirected)
-        MobileFuse.setPrivacyPreferences(privacyPreferences)
-        log(.privacyUpdated(setting: "subjectToCoppa", value: isChildDirected))
+        log(.privacyUpdated(setting: "subjectToCoppa", value: isUserUnderage))
     }
 
     /// Creates a new banner ad object in charge of communicating with a single partner SDK ad instance.
