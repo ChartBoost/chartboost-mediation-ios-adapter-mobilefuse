@@ -3,10 +3,11 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
 
+import ChartboostMediationSDK
 import Foundation
 import MobileFuseSDK
 
-@objc public class MobileFuseAdapterConfiguration: NSObject {
+@objc public class MobileFuseAdapterConfiguration: NSObject, PartnerAdapterConfiguration {
 
     /// The version of the partner SDK.
     @objc public static var partnerSDKVersion: String {
