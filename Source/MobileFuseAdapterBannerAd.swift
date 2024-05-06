@@ -33,14 +33,18 @@ final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerBannerAd {
         }
 
         // Fail if we cannot fit a fixed size banner in the requested size.
-        guard let (loadedSize, partnerSize) = fixedBannerSize(for: request.bannerSize) else {
+        guard
+            let requestedSize = request.bannerSize,
+            let fittingSize = BannerSize.largestStandardFixedSizeThatFits(in: requestedSize),
+            let mobileFuseSize = fittingSize.mfAdSize
+        else {
             let error = error(.loadFailureInvalidBannerSize)
             log(.loadFailed(error))
             return completion(.failure(error))
         }
-        size = PartnerBannerSize(size: loadedSize, type: .fixed)
+        size = PartnerBannerSize(size: fittingSize.size, type: .fixed)
 
-        if let bannerAd = MFBannerAd(placementId: request.partnerPlacement, with: partnerSize) {
+        if let bannerAd = MFBannerAd(placementId: request.partnerPlacement, with: mobileFuseSize) {
             mfBannerAd = bannerAd
             loadCompletion = completion
             // Set test mode to either true or false
@@ -114,31 +118,17 @@ extension MobileFuseAdapterBannerAd: IMFAdCallbackReceiver {
     }
 }
 
-// MARK: - Helpers
-extension MobileFuseAdapterBannerAd {
-    private func fixedBannerSize(for requestedSize: BannerSize? ) -> (size: CGSize, partnerSize: MFBannerAdSize)? {
-        // Return a default value if no size is specified
-        guard let requestedSize else {
-            return (BannerSize.standard.size, .MOBILEFUSE_BANNER_SIZE_320x50)
-        }
-
-        // If we can find a size that fits, return that.
-        if let size = BannerSize.largestStandardFixedSizeThatFits(in: requestedSize) {
-            switch size {
-            case .standard:
-                return (BannerSize.standard.size, .MOBILEFUSE_BANNER_SIZE_320x50)
-            case .medium:
-                return (BannerSize.medium.size, .MOBILEFUSE_BANNER_SIZE_300x250)
-            case .leaderboard:
-                return (BannerSize.leaderboard.size, .MOBILEFUSE_BANNER_SIZE_728x90)
-            default:
-                // largestStandardFixedSizeThatFits currently only returns .standard, .medium, or .leaderboard,
-                // but if that changes then just default to .standard until this code gets updated.
-                return (BannerSize.standard.size, .MOBILEFUSE_BANNER_SIZE_320x50)
-            }
-        } else {
-            // largestStandardFixedSizeThatFits has returned nil to indicate it couldn't find a fit.
-            return nil
+extension BannerSize {
+    fileprivate var mfAdSize: MFBannerAdSize? {
+        switch self {
+        case .standard:
+            .MOBILEFUSE_BANNER_SIZE_320x50
+        case .medium:
+            .MOBILEFUSE_BANNER_SIZE_300x250
+        case .leaderboard:
+            .MOBILEFUSE_BANNER_SIZE_728x90
+        default:
+            nil
         }
     }
 }
