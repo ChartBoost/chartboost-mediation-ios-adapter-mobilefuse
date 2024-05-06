@@ -33,14 +33,18 @@ final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerBannerAd {
         }
 
         // Fail if we cannot fit a fixed size banner in the requested size.
-        guard let (loadedSize, partnerSize) = fixedBannerSize(for: request.bannerSize) else {
+        guard
+            let requestedSize = request.bannerSize,
+            let fittingSize = BannerSize.largestStandardFixedSizeThatFits(in: requestedSize),
+            let mobileFuseSize = fittingSize.mfAdSize
+        else {
             let error = error(.loadFailureInvalidBannerSize)
             log(.loadFailed(error))
             return completion(.failure(error))
         }
-        size = PartnerBannerSize(size: loadedSize, type: .fixed)
+        size = PartnerBannerSize(size: fittingSize.size, type: .fixed)
 
-        if let bannerAd = MFBannerAd(placementId: request.partnerPlacement, with: partnerSize) {
+        if let bannerAd = MFBannerAd(placementId: request.partnerPlacement, with: mobileFuseSize) {
             mfBannerAd = bannerAd
             loadCompletion = completion
             // Set test mode to either true or false
@@ -114,28 +118,17 @@ extension MobileFuseAdapterBannerAd: IMFAdCallbackReceiver {
     }
 }
 
-// MARK: - Helpers
-extension MobileFuseAdapterBannerAd {
-    private func fixedBannerSize(
-        for requestedSize: BannerSize?
-    ) -> (size: CGSize, partnerSize: MFBannerAdSize)? {
-        guard let requestedSize else {
-            return (IABStandardAdSize, .MOBILEFUSE_BANNER_SIZE_320x50)
+extension BannerSize {
+    fileprivate var mfAdSize: MFBannerAdSize? {
+        switch self {
+        case .standard:
+            .MOBILEFUSE_BANNER_SIZE_320x50
+        case .medium:
+            .MOBILEFUSE_BANNER_SIZE_300x250
+        case .leaderboard:
+            .MOBILEFUSE_BANNER_SIZE_728x90
+        default:
+            nil
         }
-        let sizes: [(size: CGSize, partnerSize: MFBannerAdSize)] = [
-            (size: IABLeaderboardAdSize, partnerSize: .MOBILEFUSE_BANNER_SIZE_728x90),
-            (size: IABMediumAdSize, partnerSize: .MOBILEFUSE_BANNER_SIZE_300x250),
-            (size: IABStandardAdSize, partnerSize: .MOBILEFUSE_BANNER_SIZE_320x50)
-        ]
-        // Find the largest size that can fit in the requested size.
-        for (size, partnerSize) in sizes {
-            // If height is 0, the pub has requested an ad of any height, so only the width matters.
-            if requestedSize.size.width >= size.width &&
-                (size.height == 0 || requestedSize.size.height >= size.height) {
-                return (size, partnerSize)
-            }
-        }
-        // The requested size cannot fit any fixed size banners.
-        return nil
     }
 }
