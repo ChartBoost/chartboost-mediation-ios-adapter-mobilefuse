@@ -7,12 +7,7 @@ import ChartboostMediationSDK
 import Foundation
 import MobileFuseSDK
 
-final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerAd {
-
-    /// The partner ad view to display inline. E.g. a banner view.
-    /// Should be nil for full-screen ads.
-    var inlineView: UIView? { nil }
-
+final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerFullscreenAd {
     /// The MobileFuseSDK ad instance.
     private var ad: MFInterstitialAd?
 
@@ -22,12 +17,12 @@ final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerAd {
     /// Loads an ad.
     /// - parameter viewController: The view controller on which the ad will be presented on. Needed on load for some banners.
     /// - parameter completion: Closure to be performed once the ad has been loaded.
-    func load(with viewController: UIViewController?, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
+    func load(with viewController: UIViewController?, completion: @escaping (Error?) -> Void) {
         log(.loadStarted)
 
         guard let adm = request.adm, adm.isEmpty == false else {
             let error = error(.loadFailureInvalidAdMarkup)
-            completion(.failure(error))
+            completion(error)
             return
         }
 
@@ -43,22 +38,22 @@ final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerAd {
             } else {
                 let error = self.error(.loadFailureUnknown)
                 self.log(.loadFailed(error))
-                completion(.failure(error))
+                completion(error)
             }
         }
     }
 
     /// Shows a loaded ad.
-    /// It will never get called for banner ads. You may leave the implementation blank for that ad format.
+    /// Chartboost Mediation SDK will always call this method from the main thread.
     /// - parameter viewController: The view controller on which the ad will be presented on.
     /// - parameter completion: Closure to be performed once the ad has been shown.
-    func show(with viewController: UIViewController, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
+    func show(with viewController: UIViewController, completion: @escaping (Error?) -> Void) {
         log(.showStarted)
 
-        guard let ad = ad, ad.isLoaded() else {
+        guard let ad, ad.isLoaded() else {
             let error = error(.showFailureAdNotReady)
             log(.showFailed(error))
-            completion(.failure(error))
+            completion(error)
             return
         }
 
@@ -87,43 +82,43 @@ final class MobileFuseAdapterInterstitialAd: MobileFuseAdapterAd, PartnerAd {
 extension MobileFuseAdapterInterstitialAd: IMFAdCallbackReceiver {
     func onAdLoaded(_ ad: MFAd!) {
         log(.loadSucceeded)
-        loadCompletion?(.success([:])) ?? log(.loadResultIgnored)
+        loadCompletion?(nil) ?? log(.loadResultIgnored)
         loadCompletion = nil
     }
 
     func onAdNotFilled(_ ad: MFAd!) {
         let error = error(.loadFailureNoFill)
         log(.loadFailed(error))
-        loadCompletion?(.failure(error)) ?? log(.loadResultIgnored)
+        loadCompletion?(error) ?? log(.loadResultIgnored)
         loadCompletion = nil
     }
 
     func onAdClosed(_ ad: MFAd!) {
         log(.didDismiss(error: nil))
-        delegate?.didDismiss(self, details: [:], error: nil) ?? log(.delegateUnavailable)
+        delegate?.didDismiss(self, error: nil) ?? log(.delegateUnavailable)
     }
 
     func onAdRendered(_ ad: MFAd!) {
         showInProgress = false
         log(.showSucceeded)
-        showCompletion?(.success([:])) ?? log(.showResultIgnored)
+        showCompletion?(nil) ?? log(.showResultIgnored)
         showCompletion = nil
     }
 
     func onAdClicked(_ ad: MFAd!) {
         log(.didClick(error: nil))
-        delegate?.didClick(self, details: [:]) ?? log(.delegateUnavailable)
+        delegate?.didClick(self) ?? log(.delegateUnavailable)
     }
 
     func onAdExpired(_ ad: MFAd!) {
         log(.didExpire)
-        delegate?.didExpire(self, details: [:]) ?? log(.delegateUnavailable)
+        delegate?.didExpire(self) ?? log(.delegateUnavailable)
     }
 
     func onAdError(_ ad: MFAd!, withError error: MFAdError!) {
         if showInProgress {
             log(.showFailed(error))
-            showCompletion?(.failure(error)) ?? log(.showResultIgnored)
+            showCompletion?(error) ?? log(.showResultIgnored)
             showCompletion = nil
         } else {
             let errorMessage = error.localizedDescription

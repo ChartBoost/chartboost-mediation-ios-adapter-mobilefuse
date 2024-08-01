@@ -7,40 +7,45 @@ import ChartboostMediationSDK
 import Foundation
 import MobileFuseSDK
 
-final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
+final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerBannerAd {
+    /// The partner banner ad view to display.
+    var view: UIView? { mfBannerAd }
+
+    /// The loaded partner ad banner size.
+    var size: PartnerBannerSize?
 
     // For storing a correctly typed reference to the ad instead of casting from MFAd in onAdLoaded()
     private var mfBannerAd: MFBannerAd?
     // For storing a ViewController if one is passed in load()
     private weak var viewController: UIViewController?
 
-    /// The partner ad view to display inline. E.g. a banner view.
-    /// Should be nil for full-screen ads.
-    var inlineView: UIView? {
-        mfBannerAd
-    }
-
     /// Loads an ad.
     /// - parameter viewController: The view controller on which the ad will be presented on. Needed on load for some banners.
     /// - parameter completion: Closure to be performed once the ad has been loaded.
-    func load(with viewController: UIViewController?, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
+    func load(with viewController: UIViewController?, completion: @escaping (Error?) -> Void) {
         log(.loadStarted)
         self.viewController = viewController
 
         guard let adm = request.adm, adm.isEmpty == false else {
             let error = error(.loadFailureInvalidAdMarkup)
-            completion(.failure(error))
+            completion(error)
             return
         }
 
         // Fail if we cannot fit a fixed size banner in the requested size.
-        guard let (_, partnerSize) = fixedBannerSize(for: request.size ?? IABStandardAdSize) else {
+        guard
+            let requestedSize = request.bannerSize,
+            let fittingSize = BannerSize.largestStandardFixedSizeThatFits(in: requestedSize),
+            let mobileFuseSize = fittingSize.mfAdSize
+        else {
             let error = error(.loadFailureInvalidBannerSize)
             log(.loadFailed(error))
-            return completion(.failure(error))
+            completion(error)
+            return
         }
+        size = PartnerBannerSize(size: fittingSize.size, type: .fixed)
 
-        if let bannerAd = MFBannerAd(placementId: request.partnerPlacement, with: partnerSize) {
+        if let bannerAd = MFBannerAd(placementId: request.partnerPlacement, with: mobileFuseSize) {
             mfBannerAd = bannerAd
             loadCompletion = completion
             // Set test mode to either true or false
@@ -51,16 +56,8 @@ final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
         } else {
             let error = error(.loadFailureUnknown, description: "Failed to create MFBannerAd instance")
             log(.loadFailed(error))
-            completion(.failure(error))
+            completion(error)
         }
-    }
-
-    /// Shows a loaded ad.
-    /// It will never get called for banner ads. You may leave the implementation blank for that ad format.
-    /// - parameter viewController: The view controller on which the ad will be presented on.
-    /// - parameter completion: Closure to be performed once the ad has been shown.
-    func show(with viewController: UIViewController, completion: @escaping (Result<PartnerEventDetails, Error>) -> Void) {
-        // no-op
     }
 
     func invalidate() throws {
@@ -79,14 +76,7 @@ final class MobileFuseAdapterBannerAd: MobileFuseAdapterAd, PartnerAd {
 extension MobileFuseAdapterBannerAd: IMFAdCallbackReceiver {
     func onAdLoaded(_ ad: MFAd!) {
         log(.loadSucceeded)
-
-        var partnerDetails: [String: String] = [:]
-        if let (loadedSize, _) = fixedBannerSize(for: request.size ?? IABStandardAdSize) {
-            partnerDetails["bannerWidth"] = "\(loadedSize.width)"
-            partnerDetails["bannerHeight"] = "\(loadedSize.height)"
-            partnerDetails["bannerType"] = "0" // Fixed banner
-        }
-        loadCompletion?(.success(partnerDetails)) ?? log(.loadResultIgnored)
+        loadCompletion?(nil) ?? log(.loadResultIgnored)
         loadCompletion = nil
 
         log(.showStarted)
@@ -100,13 +90,13 @@ extension MobileFuseAdapterBannerAd: IMFAdCallbackReceiver {
     func onAdNotFilled(_ ad: MFAd!) {
         let error = error(.loadFailureNoFill)
         log(.loadFailed(error))
-        loadCompletion?(.failure(error)) ?? log(.loadResultIgnored)
+        loadCompletion?(error) ?? log(.loadResultIgnored)
         loadCompletion = nil
     }
 
     func onAdClosed(_ ad: MFAd!) {
         log(.didDismiss(error: nil))
-        delegate?.didDismiss(self, details: [:], error: nil) ?? log(.delegateUnavailable)
+        delegate?.didDismiss(self, error: nil) ?? log(.delegateUnavailable)
     }
 
     func onAdRendered(_ ad: MFAd!) {
@@ -115,12 +105,12 @@ extension MobileFuseAdapterBannerAd: IMFAdCallbackReceiver {
 
     func onAdClicked(_ ad: MFAd!) {
         log(.didClick(error: nil))
-        delegate?.didClick(self, details: [:]) ?? log(.delegateUnavailable)
+        delegate?.didClick(self) ?? log(.delegateUnavailable)
     }
 
     func onAdExpired(_ ad: MFAd!) {
         log(.didExpire)
-        delegate?.didExpire(self, details: [:]) ?? log(.delegateUnavailable)
+        delegate?.didExpire(self) ?? log(.delegateUnavailable)
     }
 
     func onAdError(_ ad: MFAd!, withError error: MFAdError!) {
@@ -129,25 +119,17 @@ extension MobileFuseAdapterBannerAd: IMFAdCallbackReceiver {
     }
 }
 
-// MARK: - Helpers
-extension MobileFuseAdapterBannerAd {
-    private func fixedBannerSize(
-        for requestedSize: CGSize
-    ) -> (size: CGSize, partnerSize: MFBannerAdSize)? {
-        let sizes: [(size: CGSize, partnerSize: MFBannerAdSize)] = [
-            (size: IABLeaderboardAdSize, partnerSize: .MOBILEFUSE_BANNER_SIZE_728x90),
-            (size: IABMediumAdSize, partnerSize: .MOBILEFUSE_BANNER_SIZE_300x250),
-            (size: IABStandardAdSize, partnerSize: .MOBILEFUSE_BANNER_SIZE_320x50)
-        ]
-        // Find the largest size that can fit in the requested size.
-        for (size, partnerSize) in sizes {
-            // If height is 0, the pub has requested an ad of any height, so only the width matters.
-            if requestedSize.width >= size.width &&
-                (size.height == 0 || requestedSize.height >= size.height) {
-                return (size, partnerSize)
-            }
+extension BannerSize {
+    fileprivate var mfAdSize: MFBannerAdSize? {
+        switch self {
+        case .standard:
+            .MOBILEFUSE_BANNER_SIZE_320x50
+        case .medium:
+            .MOBILEFUSE_BANNER_SIZE_300x250
+        case .leaderboard:
+            .MOBILEFUSE_BANNER_SIZE_728x90
+        default:
+            nil
         }
-        // The requested size cannot fit any fixed size banners.
-        return nil
     }
 }
