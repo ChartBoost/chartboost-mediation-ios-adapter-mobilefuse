@@ -11,6 +11,9 @@ All official releases can be found on this repository's [releases page](https://
 
 ## Mediation 5
 
+### 5.1.10.0.0
+- This version of the adapter has been certified with MobileFuseSDK 1.10.0.
+
 ### 5.1.9.0.0
 - This version of the adapter has been certified with MobileFuseSDK 1.9.0.
 
