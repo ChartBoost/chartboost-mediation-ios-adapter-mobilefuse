@@ -8,7 +8,7 @@ The Chartboost Mediation MobileFuse adapter mediates MobileFuse via the Chartboo
 | ------ | ------ |
 | Chartboost Mediation SDK | 5.0.0+ |
 | Cocoapods | 1.11.3+ |
-| iOS | 13.0+ |
+| iOS | 15.0+ |
 | Xcode | 15.0+ |
 
 ## Integration
